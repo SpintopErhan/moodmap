@@ -1,0 +1,19 @@
+{
+  "frame": {
+    "name": "HelloWorld",
+    "version": "1",
+    "iconUrl": "https://helloworld-six-omega.vercel.app/icon.png",
+    "homeUrl": "https://helloworld-six-omega.vercel.app",
+    "splashImageUrl": "https://helloworld-six-omega.vercel.app/splash.png",
+    "splashBackgroundColor": "#FFFFFF",
+    "webhookUrl": "https://helloworld-six-omega.vercel.app/api/webhook",
+    "subtitle": "Hello World",
+    "description": "Say to Hello to World",
+    "primaryCategory": "social"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjQ4MjAxMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGExREFERWIwZDFmYWUyQTExQmNjMmQ3NWYzY0ZhYjA4ODQyYUVCYTUifQ",
+    "payload": "eyJkb21haW4iOiJoZWxsb3dvcmxkLXNpeC1vbWVnYS52ZXJjZWwuYXBwIn0",
+    "signature": "p+NNPtwN155khNVXhGkg1zwYvYJEYBV4d9w+vBWj2y1lUJxzvZdb2STuA/koKqJzKarvtQEdIuBOBLvdR90hlBw="
+  }
+}
