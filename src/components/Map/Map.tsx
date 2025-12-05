@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { Mood, Location, LocationData } from '@/types/app';
+import { Mood, LocationData } from '@/types/app'; // Location kaldırıldı
 
 // Leaflet ikon dosyalarını doğrudan import et
 import defaultIcon from 'leaflet/dist/images/marker-icon.png';
@@ -120,7 +120,7 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
                 <div className="text-2xl shrink-0">{m.emoji}</div>
                 <div>
                     <div className="text-xs font-bold text-slate-800">{m.username}</div>
-                    {m.text && <div className="text-xs text-slate-600 italic break-words">"{m.text}"</div>}
+                    {m.text && <div className="text-xs text-slate-600 italic break-words">&quot;{m.text}&quot;</div>} {/* Hata düzeltildi */}
                     <div className="text-[9px] text-slate-400 mt-0.5">
                         {new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </div>
@@ -259,7 +259,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet]);
+  }, [hasLocationBeenSet, onInitialLocationDetermined]); // 'onInitialLocationDetermined' bağımlılıklara eklendi
 
   // Clustering Logic
   const clusteredMoods = useMemo(() => {
@@ -337,7 +337,7 @@ export default function Map({
                                 <div className="text-3xl mb-2">{mainMood.emoji}</div>
                                 <div className="font-bold text-slate-800 text-sm">{mainMood.username}</div>
                                 {mainMood.text && (
-                                    <div className="text-xs text-slate-600 mt-1 italic break-words">"{mainMood.text}"</div>
+                                    <div className="text-xs text-slate-600 mt-1 italic break-words">&quot;{mainMood.text}&quot;</div> // Hata düzeltildi
                                 )}
                                 <div className="text-[10px] text-slate-400 mt-2">
                                     {mainMood.locationLabel ? mainMood.locationLabel : new Date(mainMood.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

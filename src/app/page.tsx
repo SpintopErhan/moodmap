@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react'; // useEffect artık gerçekten kaldırıldı
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-import { getLocationName } from '@/utils/location';
+// NOT: Eğer getLocationName hala bir yerden import ediliyorsa, onu da buradan veya ilgili yerden kaldırın.
+// NOT: Eğer APP_EMBED_URL hala bir yerde "const APP_EMBED_URL = '...';" şeklinde tanımlıysa, onu da kaldırın.
 import { Plus, Map as MapIcon, List } from 'lucide-react';
 
-const APP_EMBED_URL = "https://helloworld-six-omega.vercel.app";
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -32,7 +32,7 @@ export default function Home() {
   const [selectedEmoji, setSelectedEmoji] = useState(MOOD_OPTIONS[0].emoji);
   const [statusText, setStatusText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [castError, setCastError] = useState<string | null>(null);
+  const [castError, setCastError] = useState<string | null>(null); // castError şimdi UI'da gösteriliyor - hata çözülmüş olmalı.
 
   // Drag to scroll state for emoji picker
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -52,6 +52,7 @@ export default function Home() {
     }
     
     setIsSubmitting(true);
+    setCastError(null); // Yeni denemede eski hatayı temizle
 
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
     const currentUsername = user?.username || 'Anonim Kullanıcı';
@@ -110,7 +111,7 @@ export default function Home() {
         await composeCast(castContent);
       } catch (castErr) {
         console.error("Farcaster'da mood paylaşılırken hata:", castErr);
-        setCastError("Mood kaydedildi, ancak Farcaster'da paylaşılamadı.");
+        setCastError("Mood kaydedildi, ancak Farcaster'da paylaşılamadı."); // castError set ediliyor
       }
     }
   };
@@ -198,7 +199,7 @@ export default function Home() {
         {view === ViewState.ADD && (
              <div className="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200">
                  <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
-                    <h2 className="text-2xl font-bold text-center shrink-0">What's your vibe?</h2>
+                    <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
                     
                     {/* Emoji Picker - 3-Row Horizontal Scrollable Grid with Mouse Drag */}
                     <div
@@ -253,6 +254,9 @@ export default function Home() {
 
                     {!currentDeterminedLocationData && (
                         <p className="text-sm text-yellow-400 text-center">Konumunuz henüz belirlenmedi. Lütfen bekleyin...</p>
+                    )}
+                    {castError && ( // castError burada gösteriliyor
+                        <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                     )}
                  </div>
              </div>
