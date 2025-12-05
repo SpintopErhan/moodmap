@@ -56,7 +56,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
           await sdk.actions.addMiniApp();
           console.log("[FarcasterSDK] Başarılı: sdk.actions.addMiniApp() tamamlandı.");
           // Eğer burası başarılı olursa, muhtemelen bir Farcaster client içindeyiz.
-        } catch (addMiniAppErr: any) {
+        } catch (addMiniAppErr: unknown) { // 'any' -> 'unknown' olarak değiştirildi
           // `TypeError: Cannot read properties of undefined (reading 'result')` hatasını özel olarak ele al
           // Bu hata genellikle bir Farcaster client'ı içinde olmadığımızda ortaya çıkar.
           if (addMiniAppErr instanceof TypeError && addMiniAppErr.message?.includes("result")) {
@@ -92,9 +92,10 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         }
         setStatus("loaded");
         console.log("[FarcasterSDK] SDK başlatma işlemi tamamlandı. Durum: loaded.");
-      } catch (err) {
+      } catch (err: unknown) { // Buradaki 'err' tipi de 'unknown' olarak değiştirildi, iyi bir pratik.
         console.error("[FarcasterSDK] Kritik başlatma hatası oluştu:", err);
-        console.error("[FarcasterSDK] Tam hata objesi:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        // Hata objesini doğru bir şekilde loglamak için:
+        console.error("[FarcasterSDK] Tam hata objesi:", err instanceof Error ? err.message : String(err));
         setError(err instanceof Error ? err : new Error(String(err)));
         setStatus("error");
         console.log("[FarcasterSDK] SDK başlatma işlemi başarısız oldu. Durum: error.");
@@ -140,7 +141,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         console.log("[FarcasterSDK] Cast oluşturuluyor:", { text, embeds: embedsForSDK });
         await sdk.actions.composeCast({ text, embeds: embedsForSDK });
         console.log("[FarcasterSDK] Cast başarıyla oluşturuldu.");
-      } catch (err) {
+      } catch (err: unknown) { // Buradaki 'err' tipi de 'unknown' olarak değiştirildi
         console.error("[FarcasterSDK] Cast oluşturulurken hata:", err);
         throw err instanceof Error ? err : new Error(String(err));
       }
