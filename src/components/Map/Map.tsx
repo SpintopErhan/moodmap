@@ -290,7 +290,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, onInitialLocationDetermined]); // 'onInitialLocationDetermined' bağımlılıklara eklendi
+  }, [hasLocationBeenSet, onInitialLocationDetermined]); 
 
   // Clustering Logic with stable keys
   const clusteredMoods = useMemo(() => {
@@ -308,8 +308,8 @@ export default function Map({
         // ve marker'ların gereksiz yere yeniden render edilmesini azaltarak "küçük titremeler" sorununu gidermeye yardımcı olabilir.
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
         const key = mood.locationLabel && mood.locationLabel !== "Bilinmeyen Konum"
-            ? `${mood.locationLabel}-${locationCoordsKey}` // Etiketi koordinatlarla birleştirerek daha benzersiz bir anahtar
-            : locationCoordsKey; // Sadece koordinatları kullan
+            ? `${mood.locationLabel}-${locationCoordsKey}` 
+            : locationCoordsKey; 
         
         if (!groups[key]) {
             groups[key] = [];
@@ -319,9 +319,9 @@ export default function Map({
 
     // Anahtarları ve grupları içeren bir dizi döndür
     return Object.keys(groups).map(key => ({
-      clusterKey: key, // Bu, Marker bileşeni için React key olarak kullanılacak stabil anahtar
+      clusterKey: key, 
       moods: groups[key],
-      mainMood: groups[key][0], // Küme veya tekil marker için temsilci mood
+      mainMood: groups[key][0], 
       isCluster: groups[key].length > 1,
     }));
   }, [moods]);
@@ -343,15 +343,17 @@ export default function Map({
         center={mapCenter}
         zoom={mapZoom}
         minZoom={1}
-        scrollWheelZoom={false} // Mobilde tek parmakla kaydırma için kapatıldı (önceki hatadan dolayı true'ya dönmüştü)
-        doubleClickZoom={false} // Çift tıklama/dokunma ile zoom'u kapatıldı
-        touchZoom={true} // Mobilde pinch-to-zoom (iki parmakla yakınlaştırma) açık
+        scrollWheelZoom={false} // Web'de fare tekerleğiyle zoom kapalı (mobil odaklı)
+        doubleClickZoom={false} // Çift tıklama/dokunma ile zoom kapalı
+        touchZoom={true} // Mobilde iki parmakla "pinch-to-zoom" açık
         dragging={true} // Haritayı sürükleyerek gezinebilme açık
         className="h-full w-full"
-        style={{ zIndex: 0 }}
+        // --- BURADAKİ DEĞİŞİKLİK ---
+        style={{ zIndex: 0, touchAction: 'none' }} // Harita üzerinde tüm varsayılan dokunmatik eylemleri devre dışı bırakır.
+        // --- SON DEĞİŞİKLİK ---
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
-        zoomControl={false} // Zoom kontrollerini gizle
+        zoomControl={false} 
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -360,12 +362,12 @@ export default function Map({
         />
         
         {/* Mood marker'ları ve cluster'ları */}
-        {clusteredMoods.map((clusterData) => { // 'group' ve 'index' yerine 'clusterData' kullanıldı
-            const { clusterKey, moods: group, mainMood, isCluster } = clusterData; // Yeni yapıya göre destructure edildi
+        {clusteredMoods.map((clusterData) => { 
+            const { clusterKey, moods: group, mainMood, isCluster } = clusterData; 
             
             return (
                 <Marker
-                    key={clusterKey} // Stabil clusterKey kullanıldı
+                    key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
                     icon={isCluster ? createClusterIcon(group.length) : createEmojiIcon(mainMood.emoji)}
                 >
