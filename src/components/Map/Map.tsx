@@ -1,10 +1,9 @@
 // src/components/Map/Map.tsx
 "use client";
 
-// useCallback import'u kaldırıldı
-import { useEffect, useState, useMemo, useRef } from 'react'; 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
+import { useEffect, useState, useMemo, useRef } from 'react'; // useCallback kaldırıldı, gerek yok
 import { Mood, LocationData } from '@/types/app';
 
 // Leaflet ikon dosyalarını doğrudan import et
@@ -158,24 +157,52 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
     const map = useMap(); 
 
     useEffect(() => {
-        if (recenterTrigger) {
-            map.flyTo(recenterTrigger.coords, recenterTrigger.zoom, {
-                animate: true,
-                duration: 1.5
-            });
-            // Animasyon bittiğinde callback'i çağır
-            const handleMoveEnd = () => {
-                onRecenterComplete?.();
-                map.off('moveend', handleMoveEnd); // Olay dinleyiciyi kaldır
-            };
-            map.on('moveend', handleMoveEnd);
-
-            // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde dinleyiciyi kaldır
-            return () => {
-                map.off('moveend', handleMoveEnd);
-            };
+        // Eğer recenterTrigger yoksa, yapacak bir şeyimiz yok.
+        if (!recenterTrigger) {
+            return;
         }
-    }, [recenterTrigger, map, onRecenterComplete]); 
+
+        // Programatik bir flyTo hareketinin devam edip etmediğini takip eden bayrak
+        let isCurrentFlyToProgrammatic = true;
+
+        map.flyTo(recenterTrigger.coords, recenterTrigger.zoom, {
+            animate: true,
+            duration: 1.5
+        });
+
+        // Harita hareketini sonlandığında çağrılacak olay dinleyici
+        const handleMoveEnd = () => {
+            if (isCurrentFlyToProgrammatic) { // Eğer biten hareket bizim başlattığımız programatik hareketse
+                onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
+            }
+        };
+
+        // Kullanıcı haritayla etkileşime girdiğinde programatik hareketi kesmek için olay dinleyici
+        const handleUserInteraction = () => {
+            if (isCurrentFlyToProgrammatic) { // Eğer programatik hareket devam ediyorsa
+                console.log("[MapRecenterHandler] Kullanıcı etkileşimi algılandı, programatik hareket durduruluyor.");
+                map.stop(); // Devam eden tüm Leaflet animasyonlarını durdur
+                onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
+                isCurrentFlyToProgrammatic = false; // Programatik hareketin kullanıcı tarafından kesildiğini işaretle
+            }
+        };
+
+        // Gerekli olay dinleyicilerini ekle
+        map.on('moveend', handleMoveEnd);
+        map.on('mousedown', handleUserInteraction);
+        map.on('touchstart', handleUserInteraction);
+        map.on('zoomstart', handleUserInteraction);
+        map.on('dragstart', handleUserInteraction);
+
+        // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde tüm dinleyicileri kaldır
+        return () => {
+            map.off('moveend', handleMoveEnd);
+            map.off('mousedown', handleUserInteraction);
+            map.off('touchstart', handleUserInteraction);
+            map.off('zoomstart', handleUserInteraction);
+            map.off('dragstart', handleUserInteraction);
+        };
+    }, [recenterTrigger, map, onRecenterComplete]); // Bağımlılıklar
 
     return null; 
 }
