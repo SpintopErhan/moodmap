@@ -1,7 +1,7 @@
 // src/app/page.tsx
 "use client";
 
-import { useState, useRef, useCallback } from 'react'; // useCallback eklendi
+import { useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 
@@ -200,18 +200,15 @@ export default function Home() {
       
       {/* --- Header / Top Bar --- */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
-        <div className="flex justify-between items-start">
-            {/* Logo/Başlık - GİZLENDİ */}
-            <div className="bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-700 shadow-xl pointer-events-auto">
-                {/* <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    ModdMap
-                </h1> */}
-                {/* ModdMap başlığı gizlenmesi istenmişti. İsterseniz bu div'i de kaldırabilirsiniz. */}
-            </div>
+        {/* 'justify-between' yerine 'justify-end' kullanıldı çünkü sol taraftaki Logo/Başlık kısmı tamamen kaldırıldı. */}
+        <div className="flex justify-end items-start"> 
+            {/* Logo/Başlık - GİZLENDİ ve tamamen kaldırıldı */}
+            
             {/* Kullanıcı Bilgileri - Sağ Üst Köşe */}
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
-                <p className="text-lg font-semibold text-purple-100 leading-tight">@{user?.username || "anonim"}</p>
-                <p className="text-sm text-purple-200 leading-tight">FID: {user?.fid || 0}</p>
+                {/* Font boyutu 'text-lg'den 'text-base'e düşürüldü */}
+                <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonim"}</p>
+                {/* FID bilgisi kaldırıldı */}
             </div>
         </div>
       </div>
