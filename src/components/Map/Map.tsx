@@ -136,7 +136,7 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
 // Rastgele uzak konumlar listesi
 const REMOTE_LOCATIONS: LocationData[] = [
   { name: "Sahra Çölü", coords: [23.4514, 15.5369], zoom: 5, popupText: "Konum izni verilmedi: Sahra Çölü" },
-  { name: "Antarktika", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Konum izni verilmedi: Antarktika" }, // <-- Burası güncellendi!
+  { name: "Antarktika", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Konum izni verilmedi: Antarktika" },
   { name: "Grönland", coords: [71.7069, -42.6043], zoom: 4, popupText: "Konum izni verilmedi: Grönland" },
   { name: "Mariana Çukuru", coords: [11.3650, 142.2500], zoom: 7, popupText: "Konum izni verilmedi: Mariana Çukuru" },
 ];
@@ -234,8 +234,8 @@ export default function Map({
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
   
-  // Başlangıçta belirlenen konumu ve zoom seviyesini saklamak için yeni state
-  const [initialDeterminedLocationData, setInitialDeterminedLocationData] = useState<LocationData | null>(null);
+  // Başlangıçta belirlenen konumu ve zoom seviyesini saklamak için kullanılan state kaldırıldı
+  // const [initialDeterminedLocationData, setInitialDeterminedLocationData] = useState<LocationData | null>(null); // <-- Kaldırıldı
 
   // Bu bayrak, konumun (gerçek veya rastgele) ayarlanıp ayarlanmadığını takip eder.
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
@@ -247,7 +247,7 @@ export default function Map({
       if (!hasLocationBeenSet) {
         setMapCenter(location.coords);
         setMapZoom(location.zoom);
-        setInitialDeterminedLocationData(location); // İlk belirlenen konumu sakla
+        // setInitialDeterminedLocationData(location); // <-- Kaldırıldı
         setHasLocationBeenSet(true);
         console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
         if (onInitialLocationDetermined) {
@@ -294,7 +294,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, onInitialLocationDetermined]);
+  }, [hasLocationBeenSet, onInitialLocationDetermined]); // 'onInitialLocationDetermined' bağımlılıklara eklendi
 
   // Clustering Logic
   const clusteredMoods = useMemo(() => {
@@ -317,6 +317,7 @@ export default function Map({
 
     return Object.values(groups);
   }, [moods]);
+
 
   if (!mapCenter) {
     return (
