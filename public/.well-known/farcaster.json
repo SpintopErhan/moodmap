@@ -3,9 +3,10 @@
     "name": "MoodMap",
     "version": "1",
     "iconUrl": "https://moodmap-lake.vercel.app/icon.png",
-    "homeUrl": "https://moodmap-lake.vercel.app/",
+    "homeUrl": "https://moodmap-lake.vercel.app",
+    "imageUrl": "https://moodmap-lake.vercel.app/image.png",
     "splashImageUrl": "https://moodmap-lake.vercel.app/splash.png",
-    "splashBackgroundColor": "#FFFFFF",
+    "splashBackgroundColor": "#3F48CC",
     "webhookUrl": "https://moodmap-lake.vercel.app/api/webhook",
     "subtitle": "Share your mood",
     "description": "Share your mood to world",
@@ -13,8 +14,7 @@
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjQ4MjAxMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGExREFERWIwZDFmYWUyQTExQmNjMmQ3NWYzY0ZhYjA4ODQyYUVCYTUifQ",
-    "payload": "eyJkb21haW4iOiJoZWxsb3dvcmxkLXNpeC1vbWVnYS52ZXJjZWwuYXBwIn0",
-    "signature": "p+NNPtwN155khNVXhGkg1zwYvYJEYBV4d9w+vBWj2y1lUJxzvZdb2STuA/koKqJzKarvtQEdIuBOBLvdR90hlBw="
+    "payload": "eyJkb21haW4iOiJtb29kbWFwLWxha2UudmVyY2VsLmFwcCJ9",
+    "signature": "uGGm1UZ+v5A0Zda5k1DVou9hex2InttewbEi/Ronhk1VjKO4A+y9PHiqna/O/HX49qhi9bbFJLOamLqZSetXtxs="
   }
 }
-
