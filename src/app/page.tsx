@@ -144,7 +144,7 @@ export default function Home() {
         
         await composeCast(castContent);
         console.log("Mood başarıyla Farcaster'a cast edildi.");
-        alert("Mood başarıyla Farcaster'a paylaşıldı!"); // Kullanıcıya bildirim
+       // alert("Mood başarıyla Farcaster'a paylaşıldı!"); // Kullanıcıya bildirim
     } catch (castErr) {
         console.error("Farcaster'da mood paylaşılırken hata:", castErr);
         setCastError("Farcaster'da paylaşılamadı. Lütfen tekrar deneyin.");
