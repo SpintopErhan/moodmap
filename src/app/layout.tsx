@@ -1,9 +1,9 @@
 // src/app/layout.tsx
-import './globals.css'; // Bu satırı ekleyin!
+import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'] }); // 'inter' burada tanımlanıyor
 
 export const metadata: Metadata = {
   title: 'ModdMap MiniApp',
@@ -43,7 +43,8 @@ export default function RootLayout({
         <meta property="og:image" content="https://moodmap-lake.vercel.app/frame_image.png" />
         <meta property="og:title" content="MoodMap" />
       </head>
-      <body>{children}</body>
+      {/* Hata çözümü: inter.className'i <body> etiketine ekleyin */}
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
