@@ -1,0 +1,20 @@
+{
+  "frame": {
+    "name": "MoodMap",
+    "version": "1",
+    "iconUrl": "https://moodmap-lake.vercel.app/icon.png",
+    "homeUrl": "https://moodmap-lake.vercel.app/",
+    "splashImageUrl": "https://moodmap-lake.vercel.app/splash.png",
+    "splashBackgroundColor": "#FFFFFF",
+    "webhookUrl": "https://moodmap-lake.vercel.app/api/webhook",
+    "subtitle": "Share your mood",
+    "description": "Share your mood to world",
+    "primaryCategory": "social"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjQ4MjAxMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGExREFERWIwZDFmYWUyQTExQmNjMmQ3NWYzY0ZhYjA4ODQyYUVCYTUifQ",
+    "payload": "eyJkb21haW4iOiJoZWxsb3dvcmxkLXNpeC1vbWVnYS52ZXJjZWwuYXBwIn0",
+    "signature": "p+NNPtwN155khNVXhGkg1zwYvYJEYBV4d9w+vBWj2y1lUJxzvZdb2STuA/koKqJzKarvtQEdIuBOBLvdR90hlBw="
+  }
+}
+
