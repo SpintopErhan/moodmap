@@ -1,9 +1,10 @@
 // src/components/Map/Map.tsx
 "use client";
 
+// useCallback import'u kaldırıldı
+import { useEffect, useState, useMemo, useRef } from 'react'; 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'; // useCallback eklendi
 import { Mood, LocationData } from '@/types/app';
 
 // Leaflet ikon dosyalarını doğrudan import et
@@ -150,7 +151,7 @@ const getRandomRemoteLocation = (): LocationData => {
 // Harita hareketini programatik olarak yönetmek için yardımcı bileşen
 interface MapRecenterHandlerProps {
     recenterTrigger?: { coords: [number, number], zoom: number } | null;
-    onRecenterComplete?: () => void; // Yeni prop eklendi
+    onRecenterComplete?: () => void; 
 }
 
 function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenterHandlerProps) {
@@ -174,7 +175,7 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
                 map.off('moveend', handleMoveEnd);
             };
         }
-    }, [recenterTrigger, map, onRecenterComplete]); // onRecenterComplete bağımlılıklara eklendi
+    }, [recenterTrigger, map, onRecenterComplete]); 
 
     return null; 
 }
@@ -229,7 +230,7 @@ interface MapComponentProps {
   userLastMoodLocation?: LocationData | null; 
   bottomOffsetPx?: number;
   rightOffsetPx?: number;
-  onRecenterComplete?: () => void; // Map bileşenine de eklendi
+  onRecenterComplete?: () => void; 
 }
 
 export default function Map({
@@ -240,7 +241,7 @@ export default function Map({
   userLastMoodLocation,
   bottomOffsetPx,
   rightOffsetPx,
-  onRecenterComplete, // Map bileşenine eklendi
+  onRecenterComplete, 
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -396,10 +397,8 @@ export default function Map({
             );
         })}
         
-        {/* Map Recenter Handler'a onRecenterComplete prop'u eklendi */}
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
         
-        {/* Son mood konumuna git butonu */}
         <RecenterToLastMoodButton
             lastMoodLocation={userLastMoodLocation}
             bottomOffsetPx={bottomOffsetPx}
