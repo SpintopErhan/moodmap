@@ -1,5 +1,5 @@
 // src/utils/location.ts
-import { Location } from '@/types/app'; // Yeni tanımladığımız Location tipini kullan
+// import { Location } from '@/types/app'; // Bu satır kaldırıldı çünkü kullanılmıyor
 
 // Helper function to get human readable address
 export const getLocationName = async (lat: number, lng: number): Promise<string> => {
