@@ -3,7 +3,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Mood, LocationData } from '@/types/app';
 
 // Leaflet ikon dosyalarını doğrudan import et
@@ -78,47 +78,43 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const [startY, setStartY] = useState(0);
   const [startScrollTop, setStartScrollTop] = useState(0);
 
-  // Mouse olaylarını dokunma olaylarına dönüştürmek için de kullanılabilir
-  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDragging(true);
-    // Mouse veya ilk dokunma noktasını al
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    setStartY(clientY);
+    setStartY(e.pageY);
     if (scrollRef.current) {
       setStartScrollTop(scrollRef.current.scrollTop);
     }
   };
 
-  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isDragging || !scrollRef.current) return;
-    e.preventDefault(); // Varsayılan tarayıcı kaydırma ve zoom davranışını engelle
-
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const walk = (clientY - startY) * 2;
+    e.preventDefault(); // Prevent default touch behavior (e.g., page scroll)
+    const y = e.pageY;
+    const walk = (y - startY) * 2;
     scrollRef.current.scrollTop = startScrollTop - walk;
   };
 
-  const handleEnd = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleMouseUp = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDragging(false);
   };
-  
-  // `onWheel` ile birlikte mobil için `touchAction: 'pan-y'` ekleniyor
+
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
   return (
     <div
       ref={scrollRef}
       className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      onMouseDown={handleStart}
-      onMouseMove={handleMove}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd} // mouseLeave'de de sürüklemeyi bitir
-      onTouchStart={handleStart} // Dokunma olayları eklendi
-      onTouchMove={handleMove}
-      onTouchEnd={handleEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
       onWheel={(e) => e.stopPropagation()}
-      style={{ touchAction: 'pan-y' }} // Sadece dikey kaydırmaya izin ver. Bu, pop-up içinde dikey kaydırmayı etkinleştirir.
     >
         {moods.map((m) => (
             <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-200 pb-2 last:border-0 last:pb-0">
@@ -153,104 +149,85 @@ const getRandomRemoteLocation = (): LocationData => {
 
 // Harita hareketini programatik olarak yönetmek için yardımcı bileşen
 interface MapRecenterHandlerProps {
-    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null;
-    onRecenterComplete?: () => void;
+    // animate özelliği eklendi, varsayılanı true
+    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null; // animate artık zorunlu
+    onRecenterComplete?: () => void; 
 }
 
 function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenterHandlerProps) {
-    const map = useMap();
-    const isProgrammaticMoveRef = useRef(false);
-    // lastProcessedTrigger ref'i, aynı tetikleyicinin birden fazla kez işlenmesini engellemek içindir.
-    // Kullanıcının tıklama aksiyonlarını engellememeli, sadece gereksiz tekrarı önlemelidir.
-    const lastProcessedTrigger = useRef<{ coords: [number, number], zoom: number, animate: boolean } | null>(null);
+    const map = useMap(); 
+    const isProgrammaticMoveRef = useRef(false); // Programatik hareketi takip etmek için ref
 
     useEffect(() => {
         if (!recenterTrigger) {
-            // Trigger yoksa, önceki işlem tamamlanmıştır veya hiç yoktu.
-            // Bu durumda, son işlenen trigger'ı sıfırlayabiliriz ki, bir sonraki trigger yeni bir işlem olarak görünsün.
-            lastProcessedTrigger.current = null;
             return;
         }
 
         const { coords, zoom, animate } = recenterTrigger;
 
-        // DEĞİŞİKLİK 1: Eğer gelen trigger, son işlenen trigger ile içerik olarak aynıysa atla.
-        // Bu, `page.tsx`'in aynı referansla veya aynı değerlerle sürekli `setMapRecenterTrigger` çağırmasını engeller.
-        // `page.tsx`'teki `setMapRecenterTrigger({ coords, zoom: 16, animate: true });` her zaman yeni bir obje yaratacaktır.
-        // Ancak objenin içeriği (coords, zoom, animate) aynıysa ve zaten bu işlemi yapmışsak tekrar yapmaya gerek yoktur.
-        if (lastProcessedTrigger.current &&
-            lastProcessedTrigger.current.coords[0] === coords[0] &&
-            lastProcessedTrigger.current.coords[1] === coords[1] &&
-            lastProcessedTrigger.current.zoom === zoom &&
-            lastProcessedTrigger.current.animate === animate) {
-            console.log("[MapRecenterHandler] Aynı recenter trigger tekrar geldi, atlanıyor.");
-            onRecenterComplete?.(); // Yine de tamamlandığını bildir
-            return;
-        }
-        
-        // DEĞİŞİKLİK 2: Önceki 5 metrelik uzaklık kontrolünü kaldırdık.
-        // Bu kontrol, navigasyon butonunun işlevini engelliyordu çünkü kullanıcının zaten konumuna yakın olması durumunda hareket etmiyordu.
-        // Kullanıcının butona basması, haritanın o konuma gitme isteğidir ve bu her zaman yerine getirilmelidir.
-        // Titreme sorununu çözmek için daha iyi bir yer, `page.tsx` içinde `recenterTrigger` state'ini güncelleyen kısımdır.
-
-        // Yeni trigger'ı işlediğimizi işaretle
-        lastProcessedTrigger.current = recenterTrigger;
-
         if (animate) {
-            isProgrammaticMoveRef.current = true;
+            isProgrammaticMoveRef.current = true; // Animasyonlu hareket başlıyor
             map.flyTo(coords, zoom, {
                 animate: true,
-                duration: 1.5
+                duration: 1.5 // Animasyon süresi
             });
 
+            // Animasyon bitişini veya kullanıcı etkileşimini dinle
             const handleMoveEnd = () => {
-                if (isProgrammaticMoveRef.current) {
+                if (isProgrammaticMoveRef.current) { // Eğer biten hareket bizim başlattığımız programatik hareketse
+                    // Programatik hareket sona erdi, trigger'ı sıfırla
                     isProgrammaticMoveRef.current = false;
-                    onRecenterComplete?.();
+                    onRecenterComplete?.(); 
                 }
             };
 
+            // Kullanıcı haritayla etkileşime girdiğinde programatik hareketi kesmek için olay dinleyici
             const handleUserInteraction = () => {
-                if (isProgrammaticMoveRef.current) {
+                if (isProgrammaticMoveRef.current) { // Eğer programatik hareket devam ediyorsa
                     console.log("[MapRecenterHandler] Kullanıcı etkileşimi algılandı, programatik hareket durduruluyor.");
-                    (map as L.Map).stop();
-                    isProgrammaticMoveRef.current = false;
-                    onRecenterComplete?.();
+                    (map as L.Map).stop(); // Devam eden animasyonu durdur
+                    isProgrammaticMoveRef.current = false; // Programatik hareketin kullanıcı tarafından kesildiğini işaretle
+                    onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
                 }
             };
 
+            // Gerekli olay dinleyicilerini ekle
             map.on('moveend', handleMoveEnd);
             map.on('mousedown', handleUserInteraction);
             map.on('touchstart', handleUserInteraction);
             map.on('zoomstart', handleUserInteraction);
             map.on('dragstart', handleUserInteraction);
 
+            // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde tüm dinleyicileri kaldır
             return () => {
                 map.off('moveend', handleMoveEnd);
                 map.off('mousedown', handleUserInteraction);
                 map.off('touchstart', handleUserInteraction);
                 map.off('zoomstart', handleUserInteraction);
                 map.off('dragstart', handleUserInteraction);
-                isProgrammaticMoveRef.current = false;
+                isProgrammaticMoveRef.current = false; // Temizlerken de bayrağı sıfırla
             };
         } else {
-            map.setView(coords, zoom, { animate: false });
-            onRecenterComplete?.();
+            // Anında atlama (setView)
+            map.setView(coords, zoom, { animate: false }); // Animasyon olmadan direkt konuma atla
+            onRecenterComplete?.(); // Anında tamamlandığını bildir (çünkü animasyon yok)
         }
 
-    }, [recenterTrigger, map, onRecenterComplete]);
+    }, [recenterTrigger, map, onRecenterComplete]); // Bağımlılıklar
 
-    return null;
+    return null; 
 }
 
 
 // --- Ana Harita Bileşeni ---
 interface MapComponentProps {
   height?: string;
-  moods: Mood[];
-  onInitialLocationDetermined?: (locationData: LocationData | null) => void;
-  recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null;
-  onRecenterComplete?: () => void;
+  moods: Mood[]; 
+  onInitialLocationDetermined?: (locationData: LocationData | null) => void; 
+  
+  // animate özelliği eklendi ve zorunlu hale geldi
+  recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null; 
+  onRecenterComplete?: () => void; 
 }
 
 export default function Map({
@@ -258,28 +235,26 @@ export default function Map({
   moods,
   onInitialLocationDetermined,
   recenterTrigger,
-  onRecenterComplete,
+  onRecenterComplete, 
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
 
-  // setLocation'ı useCallback ile sarmala
-  const setLocation = useCallback((location: LocationData) => {
-    if (!hasLocationBeenSet) {
-      setMapCenter(location.coords);
-      setMapZoom(location.zoom);
-      setHasLocationBeenSet(true);
-      console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
-      if (onInitialLocationDetermined) {
-        onInitialLocationDetermined(location);
-      }
-    }
-  }, [hasLocationBeenSet, onInitialLocationDetermined]);
-
-
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+
+    const setLocation = (location: LocationData) => {
+      if (!hasLocationBeenSet) {
+        setMapCenter(location.coords);
+        setMapZoom(location.zoom);
+        setHasLocationBeenSet(true);
+        console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
+        if (onInitialLocationDetermined) {
+          onInitialLocationDetermined(location); 
+        }
+      }
+    };
 
     if (navigator.geolocation) {
       timeoutId = setTimeout(() => {
@@ -293,14 +268,14 @@ export default function Map({
         (position) => {
           clearTimeout(timeoutId);
           const { latitude, longitude } = position.coords;
-
+          
           setLocation({
             name: "Mevcut Konumunuz",
             coords: [latitude, longitude],
             zoom: 14,
             popupText: "Mevcut Konumunuz"
           });
-
+          
           console.log("[Map] Konum izni verildi:", latitude, longitude);
         },
         (error) => {
@@ -319,7 +294,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, setLocation]); // setLocation bağımlılığı eklendi
+  }, [hasLocationBeenSet, onInitialLocationDetermined]); 
 
   // Clustering Logic with stable keys
   const clusteredMoods = useMemo(() => {
@@ -332,9 +307,9 @@ export default function Map({
     moods.forEach((mood) => {
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
         const key = mood.locationLabel && mood.locationLabel !== "Bilinmeyen Konum"
-            ? `${mood.locationLabel}-${locationCoordsKey}`
-            : locationCoordsKey;
-
+            ? `${mood.locationLabel}-${locationCoordsKey}` 
+            : locationCoordsKey; 
+        
         if (!groups[key]) {
             groups[key] = [];
         }
@@ -342,9 +317,9 @@ export default function Map({
     });
 
     return Object.keys(groups).map(key => ({
-      clusterKey: key,
+      clusterKey: key, 
       moods: groups[key],
-      mainMood: groups[key][0],
+      mainMood: groups[key][0], 
       isCluster: groups[key].length > 1,
     }));
   }, [moods]);
@@ -366,30 +341,28 @@ export default function Map({
         center={mapCenter}
         zoom={mapZoom}
         minZoom={1}
-        scrollWheelZoom={false}
-        doubleClickZoom={false}
-        // touchZoom ayarı (önceki öneriden kalma, mobil zoom sorununa yönelik)
-        touchZoom={'center'} // Öncelikle bunu deneyin. Eğer hala sorun varsa `false` yapın.
-        dragging={true}
+        scrollWheelZoom={false} 
+        doubleClickZoom={false} 
+        touchZoom={true} 
+        dragging={true} 
         className="h-full w-full"
-        // touchAction ayarı (önceki öneriden kalma, mobil zoom sorununa yönelik)
-        style={{ zIndex: 0, touchAction: 'pan-x pan-y' }}
+        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' tekrar eklendi
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
-        zoomControl={false}
+        zoomControl={false} 
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           noWrap={true}
         />
-
-        {clusteredMoods.map((clusterData) => {
-            const { clusterKey, moods: group, mainMood, isCluster } = clusterData;
-
+        
+        {clusteredMoods.map((clusterData) => { 
+            const { clusterKey, moods: group, mainMood, isCluster } = clusterData; 
+            
             return (
                 <Marker
-                    key={clusterKey}
+                    key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
                     icon={isCluster ? createClusterIcon(group.length) : createEmojiIcon(mainMood.emoji)}
                 >
@@ -417,9 +390,9 @@ export default function Map({
                 </Marker>
             );
         })}
-
+        
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
-
+        
       </MapContainer>
     </div>
   );
