@@ -234,6 +234,9 @@ export default function Map({
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
   
+  // Başlangıçta belirlenen konumu ve zoom seviyesini saklamak için kullanılan state kaldırıldı
+  // const [initialDeterminedLocationData, setInitialDeterminedLocationData] = useState<LocationData | null>(null); // <-- Kaldırıldı
+
   // Bu bayrak, konumun (gerçek veya rastgele) ayarlanıp ayarlanmadığını takip eder.
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
 
@@ -244,6 +247,7 @@ export default function Map({
       if (!hasLocationBeenSet) {
         setMapCenter(location.coords);
         setMapZoom(location.zoom);
+        // setInitialDeterminedLocationData(location); // <-- Kaldırıldı
         setHasLocationBeenSet(true);
         console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
         if (onInitialLocationDetermined) {
@@ -290,7 +294,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, onInitialLocationDetermined]);
+  }, [hasLocationBeenSet, onInitialLocationDetermined]); // 'onInitialLocationDetermined' bağımlılıklara eklendi
 
   // Clustering Logic
   const clusteredMoods = useMemo(() => {
@@ -331,14 +335,12 @@ export default function Map({
         center={mapCenter}
         zoom={mapZoom}
         minZoom={1}
-        scrollWheelZoom={false} // <-- GEÇİCİ OLARAK FALSE YAPILDI - DOKUNMATİK SORUNU İÇİN TEST
-        touchZoom={true}       // <-- Açıkça true yapıldı (varsayılan değerdir)
-        doubleClickZoom={true} // <-- Açıkça true yapıldı (varsayılan değerdir)
+        scrollWheelZoom={true}
         className="h-full w-full"
         style={{ zIndex: 0 }}
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
-        zoomControl={false} // Zoom kontrollerini gizle
+        zoomControl={false} // <-- Zoom kontrollerini gizle
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
