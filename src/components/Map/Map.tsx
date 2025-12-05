@@ -3,7 +3,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'; // useCallback eklendi
 import { Mood, LocationData } from '@/types/app';
 
 // Leaflet ikon dosyalarını doğrudan import et
@@ -150,10 +150,11 @@ const getRandomRemoteLocation = (): LocationData => {
 // Harita hareketini programatik olarak yönetmek için yardımcı bileşen
 interface MapRecenterHandlerProps {
     recenterTrigger?: { coords: [number, number], zoom: number } | null;
+    onRecenterComplete?: () => void; // Yeni prop eklendi
 }
 
-function MapRecenterHandler({ recenterTrigger }: MapRecenterHandlerProps) {
-    const map = useMap(); // useMap hook'unu MapContainer'ın içindeki bir bileşenden çağırıyoruz
+function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenterHandlerProps) {
+    const map = useMap(); 
 
     useEffect(() => {
         if (recenterTrigger) {
@@ -161,10 +162,21 @@ function MapRecenterHandler({ recenterTrigger }: MapRecenterHandlerProps) {
                 animate: true,
                 duration: 1.5
             });
-        }
-    }, [recenterTrigger, map]);
+            // Animasyon bittiğinde callback'i çağır
+            const handleMoveEnd = () => {
+                onRecenterComplete?.();
+                map.off('moveend', handleMoveEnd); // Olay dinleyiciyi kaldır
+            };
+            map.on('moveend', handleMoveEnd);
 
-    return null; // Bu bileşen görsel bir çıktı vermiyor, sadece yan etki (side effect) için var
+            // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde dinleyiciyi kaldır
+            return () => {
+                map.off('moveend', handleMoveEnd);
+            };
+        }
+    }, [recenterTrigger, map, onRecenterComplete]); // onRecenterComplete bağımlılıklara eklendi
+
+    return null; 
 }
 
 // YENİ BİLEŞEN: Son mood konumuna git butonu (Harita içinde, sağ altta)
@@ -175,21 +187,20 @@ interface RecenterToLastMoodButtonProps {
 }
 
 function RecenterToLastMoodButton({ lastMoodLocation, bottomOffsetPx = 80, rightOffsetPx = 20 }: RecenterToLastMoodButtonProps) {
-    const map = useMap(); // useMap hook'unu MapContainer'ın içindeki bir bileşenden çağırıyoruz
+    const map = useMap(); 
 
     const handleRecenter = () => {
         if (lastMoodLocation?.coords) {
-            map.flyTo(lastMoodLocation.coords, lastMoodLocation.zoom || 14, { // Varsayılan zoom 14 olarak ayarlandı
+            map.flyTo(lastMoodLocation.coords, lastMoodLocation.zoom || 14, { 
                 animate: true,
                 duration: 1.5
             });
         }
     };
 
-    if (!lastMoodLocation) return null; // Sadece son mood konumu varsa butonu göster
+    if (!lastMoodLocation) return null; 
 
     return (
-        // Konumlandırmayı leaflet-bottom leaflet-right olarak değiştirdik
         <div className="leaflet-bottom leaflet-right" style={{ marginBottom: `${bottomOffsetPx}px`, marginRight: `${rightOffsetPx}px` }}>
             <div className="leaflet-control leaflet-bar">
                 <button
@@ -198,7 +209,6 @@ function RecenterToLastMoodButton({ lastMoodLocation, bottomOffsetPx = 80, right
                     aria-label="Son mood konumuna git"
                     title="Son mood konumuna git"
                 >
-                    {/* Target ikonu için SVG içeriği (lucide-react'ten alınmış gibi) */}
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0Z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0Z" />
@@ -212,13 +222,14 @@ function RecenterToLastMoodButton({ lastMoodLocation, bottomOffsetPx = 80, right
 // --- Ana Harita Bileşeni ---
 interface MapComponentProps {
   height?: string;
-  moods: Mood[]; // page.tsx'ten gelecek mood'lar
-  onInitialLocationDetermined?: (locationData: LocationData | null) => void; // page.tsx'e LocationData göndermek için callback
+  moods: Mood[]; 
+  onInitialLocationDetermined?: (locationData: LocationData | null) => void; 
   
-  recenterTrigger?: { coords: [number, number], zoom: number } | null; // Programatik recenter için (page.tsx'ten gelir)
-  userLastMoodLocation?: LocationData | null; // Son mood konumuna git butonu için prop (page.tsx'ten gelir)
+  recenterTrigger?: { coords: [number, number], zoom: number } | null; 
+  userLastMoodLocation?: LocationData | null; 
   bottomOffsetPx?: number;
   rightOffsetPx?: number;
+  onRecenterComplete?: () => void; // Map bileşenine de eklendi
 }
 
 export default function Map({
@@ -229,12 +240,10 @@ export default function Map({
   userLastMoodLocation,
   bottomOffsetPx,
   rightOffsetPx,
+  onRecenterComplete, // Map bileşenine eklendi
 }: MapComponentProps) {
-  // Haritanın merkezini ve zoom'unu tutan state'ler
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
-  
-  // Bu bayrak, konumun (gerçek veya rastgele) ayarlanıp ayarlanmadığını takip eder.
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
 
   useEffect(() => {
@@ -247,7 +256,7 @@ export default function Map({
         setHasLocationBeenSet(true);
         console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
         if (onInitialLocationDetermined) {
-          onInitialLocationDetermined(location); // page.tsx'e tam LocationData gönder
+          onInitialLocationDetermined(location); 
         }
       }
     };
@@ -301,11 +310,6 @@ export default function Map({
     const groups: { [key: string]: Mood[] } = {};
 
     moods.forEach((mood) => {
-        // Daha hassas ve stabil bir anahtar oluşturma
-        // Konum etiketi varsa ve "Bilinmeyen Konum" değilse etiketi kullan,
-        // aksi takdirde enlem ve boylamı 6 ondalık hane hassasiyetinde birleştirerek bir anahtar oluştur.
-        // Bu, aynı etikete sahip ancak koordinatları çok az farklı olan mood'ların ayrı gruplandırılmasını önler
-        // ve marker'ların gereksiz yere yeniden render edilmesini azaltarak "küçük titremeler" sorununu gidermeye yardımcı olabilir.
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
         const key = mood.locationLabel && mood.locationLabel !== "Bilinmeyen Konum"
             ? `${mood.locationLabel}-${locationCoordsKey}` 
@@ -317,7 +321,6 @@ export default function Map({
         groups[key].push(mood);
     });
 
-    // Anahtarları ve grupları içeren bir dizi döndür
     return Object.keys(groups).map(key => ({
       clusterKey: key, 
       moods: groups[key],
@@ -343,14 +346,12 @@ export default function Map({
         center={mapCenter}
         zoom={mapZoom}
         minZoom={1}
-        scrollWheelZoom={false} // Web'de fare tekerleğiyle zoom kapalı (mobil odaklı)
-        doubleClickZoom={false} // Çift tıklama/dokunma ile zoom kapalı
-        touchZoom={true} // Mobilde iki parmakla "pinch-to-zoom" açık
-        dragging={true} // Haritayı sürükleyerek gezinebilme açık
+        scrollWheelZoom={false} 
+        doubleClickZoom={false} 
+        touchZoom={true} 
+        dragging={true} 
         className="h-full w-full"
-        // --- BURADAKİ DEĞİŞİKLİK ---
-        style={{ zIndex: 0, touchAction: 'none' }} // Harita üzerinde tüm varsayılan dokunmatik eylemleri devre dışı bırakır.
-        // --- SON DEĞİŞİKLİK ---
+        style={{ zIndex: 0, touchAction: 'none' }} 
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
@@ -361,7 +362,6 @@ export default function Map({
           noWrap={true}
         />
         
-        {/* Mood marker'ları ve cluster'ları */}
         {clusteredMoods.map((clusterData) => { 
             const { clusterKey, moods: group, mainMood, isCluster } = clusterData; 
             
@@ -396,8 +396,8 @@ export default function Map({
             );
         })}
         
-        {/* Map Recenter Handler */}
-        <MapRecenterHandler recenterTrigger={recenterTrigger} />
+        {/* Map Recenter Handler'a onRecenterComplete prop'u eklendi */}
+        <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
         
         {/* Son mood konumuna git butonu */}
         <RecenterToLastMoodButton

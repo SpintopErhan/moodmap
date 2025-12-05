@@ -176,6 +176,12 @@ export default function Home() {
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
   };
 
+  // Yeni callback: Harita yeniden merkezleme işlemi bittiğinde tetiklenir
+  const handleMapRecenterComplete = useCallback(() => {
+    setMapRecenterTrigger(null);
+    console.log("[page.tsx] Harita yeniden ortalama tamamlandı, trigger sıfırlandı.");
+  }, []); // Bağımlılık olarak boş dizi, çünkü hiçbir dış state veya prop'a bağlı değil
+
   if (status === "loading") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -224,6 +230,7 @@ export default function Home() {
                 userLastMoodLocation={userLastMoodLocation}
                 bottomOffsetPx={90}
                 rightOffsetPx={20}
+                onRecenterComplete={handleMapRecenterComplete} // BURADAKİ DEĞİŞİKLİK
             />
         </div>
 
