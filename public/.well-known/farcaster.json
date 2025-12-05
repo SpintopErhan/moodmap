@@ -6,7 +6,7 @@
     "homeUrl": "https://moodmap-lake.vercel.app",
     "imageUrl": "https://moodmap-lake.vercel.app/image.png",
     "splashImageUrl": "https://moodmap-lake.vercel.app/splash.png",
-    "splashBackgroundColor": "#3F48CC",
+    "splashBackgroundColor": "#F8F6E1",
     "webhookUrl": "https://moodmap-lake.vercel.app/api/webhook",
     "subtitle": "Share your mood",
     "description": "Share your mood to world",
