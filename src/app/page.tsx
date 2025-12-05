@@ -8,7 +8,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-import { Plus, Map as MapIcon, List } from 'lucide-react';
+import { Plus, Map as MapIcon, List, Target } from 'lucide-react';
 
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
@@ -25,8 +25,7 @@ export default function Home() {
 
   const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
-  const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ coords: [number, number], zoom: number } | null>(null);
-  // Yeni state: Yerel olarak kaydedilen son mood objesi
+  const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ coords: [number, number], zoom: number, animate: boolean } | null>(null);
   const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
 
 
@@ -55,7 +54,7 @@ export default function Home() {
     }
     
     setIsSubmitting(true);
-    setCastError(null); // Yeni denemede eski cast hatasını temizle
+    setCastError(null); 
 
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
     const currentUsername = user?.username || 'Anonim Kullanıcı';
@@ -99,7 +98,6 @@ export default function Home() {
       setMoods(prev => [moodToPost, ...(prev || [])]);
     }
     
-    // Mood başarıyla eklendi/güncellendiğinde kullanıcının son mood konumunu güncelle
     setUserLastMoodLocation({
         name: moodToPost.locationLabel || "Bilinmeyen Konum",
         coords: [moodToPost.location.lat, moodToPost.location.lng],
@@ -109,9 +107,9 @@ export default function Home() {
     setMapRecenterTrigger({
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || 14,
+        animate: false, // Animasyon olmadan direkt atla
     });
 
-    // Yeni: Yerel olarak post edilen son mood'u sakla
     setLastLocallyPostedMood(moodToPost);
 
 
@@ -119,11 +117,8 @@ export default function Home() {
     setStatusText('');
     setIsSubmitting(false);
 
-    // Farcaster'a cast atma mantığı buradan kaldırıldı.
-    // Artık ayrı bir fonksiyonda ve ayrı bir butona bağlanacak.
   };
 
-  // YENİ FONKSİYON: Son yerel mood'u Farcaster'a cast etmek için
   const handleCastLastMoodToFarcaster = useCallback(async () => {
     if (!lastLocallyPostedMood) {
         setCastError("Farcaster'da paylaşılacak bir mood bulunmuyor.");
@@ -134,8 +129,8 @@ export default function Home() {
         return;
     }
 
-    setIsSubmitting(true); // Cast atarken de loading state gösterebiliriz
-    setCastError(null); // Önceki hatayı temizle
+    setIsSubmitting(true); 
+    setCastError(null); 
 
     try {
         const castContent = lastLocallyPostedMood.text 
@@ -144,14 +139,13 @@ export default function Home() {
         
         await composeCast(castContent);
         console.log("Mood başarıyla Farcaster'a cast edildi.");
-       // alert("Mood başarıyla Farcaster'a paylaşıldı!"); // Kullanıcıya bildirim
     } catch (castErr) {
         console.error("Farcaster'da mood paylaşılırken hata:", castErr);
         setCastError("Farcaster'da paylaşılamadı. Lütfen tekrar deneyin.");
     } finally {
         setIsSubmitting(false);
     }
-  }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]); // Bağımlılıklar
+  }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]); 
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
@@ -176,11 +170,40 @@ export default function Home() {
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  // Yeni callback: Harita yeniden merkezleme işlemi bittiğinde tetiklenir
   const handleMapRecenterComplete = useCallback(() => {
     setMapRecenterTrigger(null);
     console.log("[page.tsx] Harita yeniden ortalama tamamlandı, trigger sıfırlandı.");
-  }, []); // Bağımlılık olarak boş dizi, çünkü hiçbir dış state veya prop'a bağlı değil
+  }, []); 
+
+  const handleRecenterToUserLocation = useCallback(() => {
+    if (view !== ViewState.MAP) { 
+        setView(ViewState.MAP);
+        setTimeout(() => { 
+            triggerRecenter();
+        }, 300); 
+    } else {
+        triggerRecenter();
+    }
+  }, [view, userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]); // Bağımlılıklar güncellendi
+
+  const triggerRecenter = () => {
+    if (userLastMoodLocation) { 
+        setMapRecenterTrigger({
+            coords: userLastMoodLocation.coords,
+            zoom: userLastMoodLocation.zoom || 14,
+            animate: true, // Animasyonlu geçiş
+        });
+    } else if (currentDeterminedLocationData) {
+        setMapRecenterTrigger({
+            coords: currentDeterminedLocationData.coords,
+            zoom: currentDeterminedLocationData.zoom || 14,
+            animate: true, // Kullanıcı isteği olduğu için animasyonlu
+        });
+    } else {
+        alert("Konum bilgisi henüz belirlenmedi.");
+    }
+  };
+
 
   if (status === "loading") {
     return (
@@ -206,15 +229,9 @@ export default function Home() {
       
       {/* --- Header / Top Bar --- */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
-        {/* 'justify-between' yerine 'justify-end' kullanıldı çünkü sol taraftaki Logo/Başlık kısmı tamamen kaldırıldı. */}
         <div className="flex justify-end items-start"> 
-            {/* Logo/Başlık - GİZLENDİ ve tamamen kaldırıldı */}
-            
-            {/* Kullanıcı Bilgileri - Sağ Üst Köşe */}
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
-                {/* Font boyutu 'text-lg'den 'text-base'e düşürüldü */}
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonim"}</p>
-                {/* FID bilgisi kaldırıldı */}
             </div>
         </div>
       </div>
@@ -227,12 +244,23 @@ export default function Home() {
                 onInitialLocationDetermined={handleInitialLocationDetermined}
                 height="100%"
                 recenterTrigger={mapRecenterTrigger}
-                userLastMoodLocation={userLastMoodLocation}
-                bottomOffsetPx={90}
-                rightOffsetPx={20}
-                onRecenterComplete={handleMapRecenterComplete} // BURADAKİ DEĞİŞİKLİK
+                onRecenterComplete={handleMapRecenterComplete} 
             />
         </div>
+
+        {/* DEĞİŞİKLİK: "Kendi Konumuna Dön" butonu buraya taşındı */}
+        {view === ViewState.MAP && ( // Sadece harita görünümündeyken göster
+            <div className="absolute bottom-24 right-4 z-40"> {/* Y ekseninde ayarlandı */}
+                <button
+                    onClick={handleRecenterToUserLocation}
+                    disabled={!userLastMoodLocation && !currentDeterminedLocationData} // Konum bilgisi yoksa disable
+                    className={`p-3 rounded-full transition-all bg-slate-800/80 backdrop-blur-lg shadow-lg border border-slate-700/50 ${(!userLastMoodLocation && !currentDeterminedLocationData) ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                    title="Kendi konumuna veya son mood konumuna dön"
+                >
+                    <Target size={24} />
+                </button>
+            </div>
+        )}
 
         {/* List View Overlay */}
         {view === ViewState.LIST && (
@@ -314,22 +342,22 @@ export default function Home() {
       <div className="absolute bottom-0 left-0 right-0 z-40 p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
         <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50">
             
+            {/* Harita görünümüne geçiş butonu - mevcut işlevini korur */}
             <button
                 onClick={() => setView(ViewState.MAP)}
                 className={`p-3 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                title="Harita Görünümüne Geç"
             >
                 <MapIcon size={24} />
             </button>
             
-            {/* YENİ: Farcaster'a Cast Atma Butonu (Şimdilik Map butonu ile Add butonu arasına ekledim, daha sonra yeri ayarlanabilir) */}
+            {/* Farcaster'a Cast Atma Butonu */}
             <button
                 onClick={handleCastLastMoodToFarcaster}
-                disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid} // Hiç mood yoksa veya user bağlı değilse disable
+                disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid} 
                 className={`p-3 rounded-full transition-all ${!lastLocallyPostedMood || isSubmitting || !user?.fid ? 'text-slate-600 cursor-not-allowed' : 'text-orange-400 hover:text-white'}`}
                 title="Son mood'u Farcaster'da paylaş"
             >
-                {/* Örnek bir Cast ikonu, Lucide-React'te yoksa basit bir SVG kullanabiliriz veya bir sembol */}
-                {/* Lucide-React'te 'MessageSquareQuote' veya 'Send' gibi bir ikon uygun olabilir */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-square-text">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     <path d="M12 8h.01"/>

@@ -3,7 +3,7 @@
 
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
-import { useEffect, useState, useMemo, useRef } from 'react'; // useCallback kaldırıldı, gerek yok
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Mood, LocationData } from '@/types/app';
 
 // Leaflet ikon dosyalarını doğrudan import et
@@ -149,103 +149,75 @@ const getRandomRemoteLocation = (): LocationData => {
 
 // Harita hareketini programatik olarak yönetmek için yardımcı bileşen
 interface MapRecenterHandlerProps {
-    recenterTrigger?: { coords: [number, number], zoom: number } | null;
+    // animate özelliği eklendi, varsayılanı true
+    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null; // animate artık zorunlu
     onRecenterComplete?: () => void; 
 }
 
 function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenterHandlerProps) {
     const map = useMap(); 
+    const isProgrammaticMoveRef = useRef(false); // Programatik hareketi takip etmek için ref
 
     useEffect(() => {
-        // Eğer recenterTrigger yoksa, yapacak bir şeyimiz yok.
         if (!recenterTrigger) {
             return;
         }
 
-        // Programatik bir flyTo hareketinin devam edip etmediğini takip eden bayrak
-        let isCurrentFlyToProgrammatic = true;
+        const { coords, zoom, animate } = recenterTrigger;
 
-        map.flyTo(recenterTrigger.coords, recenterTrigger.zoom, {
-            animate: true,
-            duration: 1.5
-        });
+        if (animate) {
+            isProgrammaticMoveRef.current = true; // Animasyonlu hareket başlıyor
+            map.flyTo(coords, zoom, {
+                animate: true,
+                duration: 1.5 // Animasyon süresi
+            });
 
-        // Harita hareketini sonlandığında çağrılacak olay dinleyici
-        const handleMoveEnd = () => {
-            if (isCurrentFlyToProgrammatic) { // Eğer biten hareket bizim başlattığımız programatik hareketse
-                onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
-            }
-        };
+            // Animasyon bitişini veya kullanıcı etkileşimini dinle
+            const handleMoveEnd = () => {
+                if (isProgrammaticMoveRef.current) { // Eğer biten hareket bizim başlattığımız programatik hareketse
+                    // Programatik hareket sona erdi, trigger'ı sıfırla
+                    isProgrammaticMoveRef.current = false;
+                    onRecenterComplete?.(); 
+                }
+            };
 
-        // Kullanıcı haritayla etkileşime girdiğinde programatik hareketi kesmek için olay dinleyici
-        const handleUserInteraction = () => {
-            if (isCurrentFlyToProgrammatic) { // Eğer programatik hareket devam ediyorsa
-                console.log("[MapRecenterHandler] Kullanıcı etkileşimi algılandı, programatik hareket durduruluyor.");
-                map.stop(); // Devam eden tüm Leaflet animasyonlarını durdur
-                onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
-                isCurrentFlyToProgrammatic = false; // Programatik hareketin kullanıcı tarafından kesildiğini işaretle
-            }
-        };
+            // Kullanıcı haritayla etkileşime girdiğinde programatik hareketi kesmek için olay dinleyici
+            const handleUserInteraction = () => {
+                if (isProgrammaticMoveRef.current) { // Eğer programatik hareket devam ediyorsa
+                    console.log("[MapRecenterHandler] Kullanıcı etkileşimi algılandı, programatik hareket durduruluyor.");
+                    (map as L.Map).stop(); // Devam eden animasyonu durdur
+                    isProgrammaticMoveRef.current = false; // Programatik hareketin kullanıcı tarafından kesildiğini işaretle
+                    onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
+                }
+            };
 
-        // Gerekli olay dinleyicilerini ekle
-        map.on('moveend', handleMoveEnd);
-        map.on('mousedown', handleUserInteraction);
-        map.on('touchstart', handleUserInteraction);
-        map.on('zoomstart', handleUserInteraction);
-        map.on('dragstart', handleUserInteraction);
+            // Gerekli olay dinleyicilerini ekle
+            map.on('moveend', handleMoveEnd);
+            map.on('mousedown', handleUserInteraction);
+            map.on('touchstart', handleUserInteraction);
+            map.on('zoomstart', handleUserInteraction);
+            map.on('dragstart', handleUserInteraction);
 
-        // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde tüm dinleyicileri kaldır
-        return () => {
-            map.off('moveend', handleMoveEnd);
-            map.off('mousedown', handleUserInteraction);
-            map.off('touchstart', handleUserInteraction);
-            map.off('zoomstart', handleUserInteraction);
-            map.off('dragstart', handleUserInteraction);
-        };
+            // Temizleme fonksiyonu: Bileşen unmount edildiğinde veya bağımlılıklar değiştiğinde tüm dinleyicileri kaldır
+            return () => {
+                map.off('moveend', handleMoveEnd);
+                map.off('mousedown', handleUserInteraction);
+                map.off('touchstart', handleUserInteraction);
+                map.off('zoomstart', handleUserInteraction);
+                map.off('dragstart', handleUserInteraction);
+                isProgrammaticMoveRef.current = false; // Temizlerken de bayrağı sıfırla
+            };
+        } else {
+            // Anında atlama (setView)
+            map.setView(coords, zoom, { animate: false }); // Animasyon olmadan direkt konuma atla
+            onRecenterComplete?.(); // Anında tamamlandığını bildir (çünkü animasyon yok)
+        }
+
     }, [recenterTrigger, map, onRecenterComplete]); // Bağımlılıklar
 
     return null; 
 }
 
-// YENİ BİLEŞEN: Son mood konumuna git butonu (Harita içinde, sağ altta)
-interface RecenterToLastMoodButtonProps {
-    lastMoodLocation?: LocationData | null;
-    bottomOffsetPx?: number;
-    rightOffsetPx?: number;
-}
-
-function RecenterToLastMoodButton({ lastMoodLocation, bottomOffsetPx = 80, rightOffsetPx = 20 }: RecenterToLastMoodButtonProps) {
-    const map = useMap(); 
-
-    const handleRecenter = () => {
-        if (lastMoodLocation?.coords) {
-            map.flyTo(lastMoodLocation.coords, lastMoodLocation.zoom || 14, { 
-                animate: true,
-                duration: 1.5
-            });
-        }
-    };
-
-    if (!lastMoodLocation) return null; 
-
-    return (
-        <div className="leaflet-bottom leaflet-right" style={{ marginBottom: `${bottomOffsetPx}px`, marginRight: `${rightOffsetPx}px` }}>
-            <div className="leaflet-control leaflet-bar">
-                <button
-                    onClick={handleRecenter}
-                    className="bg-purple-600 hover:bg-purple-500 text-white w-10 h-10 rounded-full shadow-lg flex items-center justify-center"
-                    aria-label="Son mood konumuna git"
-                    title="Son mood konumuna git"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0Z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0Z" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    );
-}
 
 // --- Ana Harita Bileşeni ---
 interface MapComponentProps {
@@ -253,10 +225,8 @@ interface MapComponentProps {
   moods: Mood[]; 
   onInitialLocationDetermined?: (locationData: LocationData | null) => void; 
   
-  recenterTrigger?: { coords: [number, number], zoom: number } | null; 
-  userLastMoodLocation?: LocationData | null; 
-  bottomOffsetPx?: number;
-  rightOffsetPx?: number;
+  // animate özelliği eklendi ve zorunlu hale geldi
+  recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null; 
   onRecenterComplete?: () => void; 
 }
 
@@ -265,9 +235,6 @@ export default function Map({
   moods,
   onInitialLocationDetermined,
   recenterTrigger,
-  userLastMoodLocation,
-  bottomOffsetPx,
-  rightOffsetPx,
   onRecenterComplete, 
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
@@ -379,7 +346,7 @@ export default function Map({
         touchZoom={true} 
         dragging={true} 
         className="h-full w-full"
-        style={{ zIndex: 0, touchAction: 'none' }} 
+        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' tekrar eklendi
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
@@ -426,11 +393,6 @@ export default function Map({
         
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
         
-        <RecenterToLastMoodButton
-            lastMoodLocation={userLastMoodLocation}
-            bottomOffsetPx={bottomOffsetPx}
-            rightOffsetPx={rightOffsetPx}
-        />
       </MapContainer>
     </div>
   );
