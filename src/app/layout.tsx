@@ -6,7 +6,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] }); // 'inter' burada tanımlanıyor
 
 export const metadata: Metadata = {
-  title: 'ModdMap MiniApp',
+  title: 'MoodMap MiniApp',
   description: 'Farcaster MiniApp for ModdMap',
 };
 
