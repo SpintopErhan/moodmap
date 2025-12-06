@@ -16,3 +16,55 @@ body {
   background-color: var(--background);
   color: var(--foreground);
 }
+
+/* Leaflet Popup için özel stiller (Koyu Tema) */
+/* Wrapper (ana kutu) stilini değiştir */
+.dark-theme-popup .leaflet-popup-content-wrapper {
+  background: #1e293b; /* Tailwind'deki slate-800 rengine karşılık gelir */
+  color: #fff; /* Metin rengini beyaz yap */
+  border-radius: 0.5rem; /* rounded-lg ile aynı */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Koyu bir gölge ekle */
+  padding: 0; /* Leaflet'in varsayılan iç boşluğunu kaldır, içeriğimiz kendi padding'ini yönetecek */
+}
+
+/* Ok (tip) stilini değiştir */
+.dark-theme-popup .leaflet-popup-tip {
+  background: #1e293b; /* Wrapper ile aynı arka plan rengi */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); /* Wrapper ile aynı gölge */
+}
+
+/* Popup içeriğindeki varsayılan margin'i kaldır (önemli!) */
+.dark-theme-popup .leaflet-popup-content {
+  margin: 0;
+  width: 100% !important; /* İçeriğin tam genişlikte olmasını sağla */
+}
+
+/* Kapatma butonu stilini düzenle */
+.dark-theme-popup .leaflet-popup-close-button {
+  color: #a78bfa; /* purple-400 */
+  font-size: 1.5rem;
+  top: 8px; 
+  right: 8px;
+}
+
+.dark-theme-popup .leaflet-popup-close-button:hover {
+  color: #c4b5fd; /* Hover durumunda rengi aç */
+}
+
+/* Kaydırma Çubuklarını Gizlemek için Özel Stil */
+/* Firefox için */
+.custom-scrollbar {
+  scrollbar-width: none; 
+}
+
+/* Webkit tarayıcıları (Chrome, Safari, Edge) için */
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0; /* Dikey kaydırma çubuğunun genişliğini sıfırlar */
+  height: 0; /* Yatay kaydırma çubuğunun yüksekliğini sıfırlar */
+}
+
+/* IE 10+ için */
+.custom-scrollbar {
+  -ms-overflow-style: none;
+}

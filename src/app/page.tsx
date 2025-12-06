@@ -15,7 +15,7 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center bg-slate-800 rounded-lg shadow-xl h-full w-full">
-      <p className="text-gray-400">Harita yükleniyor...</p>
+      <p className="text-gray-400">Loading map...</p> // ÇEVİRİ
     </div>
   ),
 });
@@ -44,12 +44,12 @@ export default function Home() {
 
   const handleInitialLocationDetermined = (locationData: LocationData | null) => {
     setCurrentDeterminedLocationData(locationData);
-    console.log("[page.tsx] Harita bileşeni tarafından konum belirlendi:", locationData);
+    console.log("[page.tsx] Location determined by map component:", locationData); // ÇEVİRİ
   };
 
   const handleAddMood = async () => {
     if (!currentDeterminedLocationData) {
-        alert("Mood paylaşmak için konum bilgisi mevcut değil. Lütfen konumu belirleyin.");
+        alert("Location information is not available to share your mood. Please determine the location."); // ÇEVİRİ
         return;
     }
     
@@ -57,12 +57,12 @@ export default function Home() {
     setCastError(null); 
 
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
-    const currentUsername = user?.username || 'Anonim Kullanıcı';
+    const currentUsername = user?.username || 'Anonymous User'; // ÇEVİRİ
 
     const existingMoodIndex = moods.findIndex(mood => mood.userId === currentUserId);
 
     const newLocation: Location = { lat: currentDeterminedLocationData.coords[0], lng: currentDeterminedLocationData.coords[1] };
-    const newLocationLabel = currentDeterminedLocationData.locationLabel || "Bilinmeyen Konum";
+    const newLocationLabel = currentDeterminedLocationData.locationLabel || "Unknown Location"; // ÇEVİRİ
 
     let moodToPost: Mood;
 
@@ -99,7 +99,7 @@ export default function Home() {
     }
     
     setUserLastMoodLocation({
-        name: moodToPost.locationLabel || "Bilinmeyen Konum",
+        name: moodToPost.locationLabel || "Unknown Location", // ÇEVİRİ
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || 14,
         popupText: moodToPost.text || moodToPost.emoji,
@@ -121,11 +121,11 @@ export default function Home() {
 
   const handleCastLastMoodToFarcaster = useCallback(async () => {
     if (!lastLocallyPostedMood) {
-        setCastError("Farcaster'da paylaşılacak bir mood bulunmuyor.");
+        setCastError("No mood found to share on Farcaster."); // ÇEVİRİ
         return;
     }
     if (!user?.fid) {
-        setCastError("Cast oluşturmak için bir Farcaster kullanıcısı olarak oturum açmış olmalısınız.");
+        setCastError("You must be logged in as a Farcaster user to create a cast."); // ÇEVİRİ
         return;
     }
 
@@ -138,10 +138,10 @@ export default function Home() {
             : `${lastLocallyPostedMood.emoji} at ${lastLocallyPostedMood.locationLabel || "a location"}`;
         
         await composeCast(castContent);
-        console.log("Mood başarıyla Farcaster'a cast edildi.");
+        console.log("Mood successfully cast to Farcaster."); // ÇEVİRİ
     } catch (castErr) {
-        console.error("Farcaster'da mood paylaşılırken hata:", castErr);
-        setCastError("Farcaster'da paylaşılamadı. Lütfen tekrar deneyin.");
+        console.error("Error sharing mood on Farcaster:", castErr); // ÇEVİRİ
+        setCastError("Failed to share on Farcaster. Please try again."); // ÇEVİRİ
     } finally {
         setIsSubmitting(false);
     }
@@ -172,7 +172,7 @@ export default function Home() {
 
   const handleMapRecenterComplete = useCallback(() => {
     setMapRecenterTrigger(null);
-    console.log("[page.tsx] Harita yeniden ortalama tamamlandı, trigger sıfırlandı.");
+    console.log("[page.tsx] Map recentering complete, trigger reset."); // ÇEVİRİ
   }, []); 
 
   const handleRecenterToUserLocation = useCallback(() => {
@@ -184,23 +184,23 @@ export default function Home() {
     } else {
         triggerRecenter();
     }
-  }, [view, userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]); // Bağımlılıklar güncellendi
+  }, [view, userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]); 
 
   const triggerRecenter = () => {
     if (userLastMoodLocation) { 
         setMapRecenterTrigger({
             coords: userLastMoodLocation.coords,
             zoom: userLastMoodLocation.zoom || 14,
-            animate: true, // Animasyonlu geçiş
+            animate: true, 
         });
     } else if (currentDeterminedLocationData) {
         setMapRecenterTrigger({
             coords: currentDeterminedLocationData.coords,
             zoom: currentDeterminedLocationData.zoom || 14,
-            animate: true, // Kullanıcı isteği olduğu için animasyonlu
+            animate: true, 
         });
     } else {
-        alert("Konum bilgisi henüz belirlenmedi.");
+        alert("Location information is not yet determined."); // ÇEVİRİ
     }
   };
 
@@ -208,8 +208,8 @@ export default function Home() {
   if (status === "loading") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
-        <p className="text-2xl animate-pulse">Farcaster MiniApp yükleniyor...</p>
-        <p className="text-lg text-gray-400 mt-2">Kullanıcı izni bekleniyor olabilir.</p>
+        <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> // ÇEVİRİ
+        <p className="text-lg text-gray-400 mt-2">Awaiting user permission...</p> // ÇEVİRİ
       </main>
     );
   }
@@ -217,9 +217,9 @@ export default function Home() {
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
-        <p className="text-2xl text-red-500 font-bold">Bir hata oluştu!</p>
-        <p className="text-xl text-red-300 mt-2">{error?.message || "SDK başlatılamadı."}</p>
-        <p className="mt-4 text-lg">Lütfen uygulamanın izinlerini kontrol edin veya tarayıcıyı yenileyin.</p>
+        <p className="text-2xl text-red-500 font-bold">An error occurred!</p> // ÇEVİRİ
+        <p className="text-xl text-red-300 mt-2">{error?.message || "SDK failed to initialize."}</p> // ÇEVİRİ
+        <p className="mt-4 text-lg">Please check app permissions or refresh your browser.</p> // ÇEVİRİ
       </main>
     );
   }
@@ -231,7 +231,7 @@ export default function Home() {
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
         <div className="flex justify-end items-start"> 
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
-                <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonim"}</p>
+                <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
         </div>
       </div>
@@ -248,14 +248,14 @@ export default function Home() {
             />
         </div>
 
-        {/* DEĞİŞİKLİK: "Kendi Konumuna Dön" butonu buraya taşındı */}
-        {view === ViewState.MAP && ( // Sadece harita görünümündeyken göster
-            <div className="absolute bottom-24 right-4 z-40"> {/* Y ekseninde ayarlandı */}
+        {/* REFACTOR: Recenter to user/last mood location button moved here */}
+        {view === ViewState.MAP && ( 
+            <div className="absolute bottom-24 right-4 z-40"> 
                 <button
                     onClick={handleRecenterToUserLocation}
-                    disabled={!userLastMoodLocation && !currentDeterminedLocationData} // Konum bilgisi yoksa disable
+                    disabled={!userLastMoodLocation && !currentDeterminedLocationData} 
                     className={`p-3 rounded-full transition-all bg-slate-800/80 backdrop-blur-lg shadow-lg border border-slate-700/50 ${(!userLastMoodLocation && !currentDeterminedLocationData) ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                    title="Kendi konumuna veya son mood konumuna dön"
+                    title="Recenter to your location or last mood location" // ÇEVİRİ
                 >
                     <Target size={24} />
                 </button>
@@ -277,9 +277,16 @@ export default function Home() {
                  <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
                     
+                    {/* YENİ: Konum uyarı mesajı burada - Kaymayı engellemek için min-h kullanıldı */}
+                    <div className="min-h-[24px] flex items-center justify-center mt-2"> 
+                        {!currentDeterminedLocationData && (
+                            <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p> // ÇEVİRİ
+                        )}
+                    </div>
+
                     <div
                         ref={scrollContainerRef}
-                        className={`w-full overflow-x-auto custom-scrollbar py-6 -mx-6 px-6 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                        className={`w-full overflow-x-auto custom-scrollbar py-6 -mx-3 px-3 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                         onMouseDown={handleMouseDown}
                         onMouseLeave={handleMouseLeave}
                         onMouseUp={handleMouseUp}
@@ -327,9 +334,6 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {!currentDeterminedLocationData && (
-                        <p className="text-sm text-yellow-400 text-center">Konumunuz henüz belirlenmedi. Lütfen bekleyin...</p>
-                    )}
                     {castError && (
                         <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                     )}
@@ -342,21 +346,19 @@ export default function Home() {
       <div className="absolute bottom-0 left-0 right-0 z-40 p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
         <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50">
             
-            {/* Harita görünümüne geçiş butonu - mevcut işlevini korur */}
             <button
                 onClick={() => setView(ViewState.MAP)}
                 className={`p-3 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
-                title="Harita Görünümüne Geç"
+                title="Switch to Map View" // ÇEVİRİ
             >
                 <MapIcon size={24} />
             </button>
             
-            {/* Farcaster'a Cast Atma Butonu */}
             <button
                 onClick={handleCastLastMoodToFarcaster}
                 disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid} 
                 className={`p-3 rounded-full transition-all ${!lastLocallyPostedMood || isSubmitting || !user?.fid ? 'text-slate-600 cursor-not-allowed' : 'text-orange-400 hover:text-white'}`}
-                title="Son mood'u Farcaster'da paylaş"
+                title="Share your last mood on Farcaster" // ÇEVİRİ
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-square-text">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -377,6 +379,7 @@ export default function Home() {
             <button
                 onClick={() => setView(ViewState.LIST)}
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                title="Switch to List View" // ÇEVİRİ
             >
                 <List size={24} />
             </button>

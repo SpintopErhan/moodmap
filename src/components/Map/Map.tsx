@@ -122,8 +122,8 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   return (
     <div
       ref={scrollRef}
-      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      // Fare olayları
+      // Stil değişiklikleri burada başlıyor
+      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-800 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`} 
       onMouseDown={handleStart}
       onMouseMove={handleMove}
       onMouseUp={handleEnd}
@@ -140,12 +140,12 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
       style={{ touchAction: 'none' }} 
     >
         {moods.map((m) => (
-            <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-200 pb-2 last:border-0 last:pb-0">
+            <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-700 pb-2 last:border-0 last:pb-0"> {/* Border rengi değişti */}
                 <div className="text-2xl shrink-0">{m.emoji}</div>
                 <div>
-                    <div className="text-xs font-bold text-slate-800">{m.username}</div>
-                    {m.text && <div className="text-xs text-slate-600 italic break-words">&quot;{m.text}&quot;</div>}
-                    <div className="text-[9px] text-slate-400 mt-0.5">
+                    <div className="text-xs font-bold text-white">{m.username}</div> {/* Yazı rengi değişti */}
+                    {m.text && <div className="text-xs text-gray-300 italic break-words">&quot;{m.text}&quot;</div>} {/* Yazı rengi değişti */}
+                    <div className="text-[9px] text-gray-400 mt-0.5"> {/* Yazı rengi değişti */}
                         {new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </div>
                 </div>
@@ -416,22 +416,25 @@ export default function Map({
                     position={[mainMood.location.lat, mainMood.location.lng]}
                     icon={isCluster ? createClusterIcon(group.length) : createEmojiIcon(mainMood.emoji)}
                 >
-                    <Popup className="custom-popup p-0" minWidth={isCluster ? 220 : 120}>
+                    {/* Popup minWidth ayarı değişti */}
+                    <Popup className="dark-theme-popup" minWidth={220}> 
                         {isCluster ? (
-                            <div className="min-w-[220px] max-w-[260px]">
-                                <div className="bg-purple-600 text-white text-xs font-bold px-3 py-2 rounded-t-lg text-center">
+                            <div className="min-w-[200px] max-w-[260px]">
+                                {/* Kümelenmiş popup başlığı için stil değişti */}
+                                <div className="bg-slate-700 text-purple-300 text-xs font-bold px-3 py-2 rounded-t-lg text-center">
                                     {mainMood.locationLabel || "Bu Alan"} ({group.length})
                                 </div>
                                 <ClusterPopupList moods={group} />
                             </div>
                         ) : (
-                            <div className="text-center min-w-[120px]">
+                            // Tekil mood popup'ı için min-w değişti
+                            <div className="text-center min-w-[150px] bg-slate-800 p-4 rounded-lg"> 
                                 <div className="text-3xl mb-2">{mainMood.emoji}</div>
-                                <div className="font-bold text-slate-800 text-sm">{mainMood.username}</div>
+                                <div className="font-bold text-white text-sm">{mainMood.username}</div>
                                 {mainMood.text && (
-                                    <div className="text-xs text-slate-600 mt-1 italic break-words">&quot;{mainMood.text}&quot;</div>
+                                    <div className="text-xs text-gray-300 mt-1 italic break-words">&quot;{mainMood.text}&quot;</div>
                                 )}
-                                <div className="text-[10px] text-slate-400 mt-2">
+                                <div className="text-[10px] text-gray-400 mt-2">
                                     {mainMood.locationLabel ? mainMood.locationLabel : new Date(mainMood.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </div>
                             </div>
