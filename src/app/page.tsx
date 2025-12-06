@@ -294,7 +294,7 @@ export default function Home() {
                         onMouseUp={handleMouseUp}
                         onMouseMove={handleMouseMove}
                     >
-                        <div className="grid grid-rows-3 grid-flow-col gap-4 w-max">
+                        <div className="grid grid-rows-3 grid-flow-col gap-3 w-max">
                             {MOOD_OPTIONS.map((opt) => (
                                 <button
                                     key={opt.label}
