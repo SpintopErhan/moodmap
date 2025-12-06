@@ -15,7 +15,7 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center bg-slate-800 rounded-lg shadow-xl h-full w-full">
-      <p className="text-gray-400">Loading map...</p> // ÇEVİRİ
+      <p className="text-gray-400">Loading map...</p> 
     </div>
   ),
 });
@@ -44,12 +44,12 @@ export default function Home() {
 
   const handleInitialLocationDetermined = (locationData: LocationData | null) => {
     setCurrentDeterminedLocationData(locationData);
-    console.log("[page.tsx] Location determined by map component:", locationData); // ÇEVİRİ
+    console.log("[page.tsx] Location determined by map component:", locationData); 
   };
 
   const handleAddMood = async () => {
     if (!currentDeterminedLocationData) {
-        alert("Location information is not available to share your mood. Please determine the location."); // ÇEVİRİ
+        alert("Location information is not available to share your mood. Please determine the location."); 
         return;
     }
     
@@ -57,12 +57,12 @@ export default function Home() {
     setCastError(null); 
 
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
-    const currentUsername = user?.username || 'Anonymous User'; // ÇEVİRİ
+    const currentUsername = user?.username || 'Anonymous User'; 
 
     const existingMoodIndex = moods.findIndex(mood => mood.userId === currentUserId);
 
     const newLocation: Location = { lat: currentDeterminedLocationData.coords[0], lng: currentDeterminedLocationData.coords[1] };
-    const newLocationLabel = currentDeterminedLocationData.locationLabel || "Unknown Location"; // ÇEVİRİ
+    const newLocationLabel = currentDeterminedLocationData.locationLabel || "Unknown Location"; 
 
     let moodToPost: Mood;
 
@@ -99,7 +99,7 @@ export default function Home() {
     }
     
     setUserLastMoodLocation({
-        name: moodToPost.locationLabel || "Unknown Location", // ÇEVİRİ
+        name: moodToPost.locationLabel || "Unknown Location", 
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || 14,
         popupText: moodToPost.text || moodToPost.emoji,
@@ -107,7 +107,7 @@ export default function Home() {
     setMapRecenterTrigger({
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || 14,
-        animate: false, // Animasyon olmadan direkt atla
+        animate: false, 
     });
 
     setLastLocallyPostedMood(moodToPost);
@@ -121,11 +121,11 @@ export default function Home() {
 
   const handleCastLastMoodToFarcaster = useCallback(async () => {
     if (!lastLocallyPostedMood) {
-        setCastError("No mood found to share on Farcaster."); // ÇEVİRİ
+        setCastError("No mood found to share on Farcaster."); 
         return;
     }
     if (!user?.fid) {
-        setCastError("You must be logged in as a Farcaster user to create a cast."); // ÇEVİRİ
+        setCastError("You must be logged in as a Farcaster user to create a cast."); 
         return;
     }
 
@@ -138,10 +138,10 @@ export default function Home() {
             : `${lastLocallyPostedMood.emoji} at ${lastLocallyPostedMood.locationLabel || "a location"}`;
         
         await composeCast(castContent);
-        console.log("Mood successfully cast to Farcaster."); // ÇEVİRİ
+        console.log("Mood successfully cast to Farcaster."); 
     } catch (castErr) {
-        console.error("Error sharing mood on Farcaster:", castErr); // ÇEVİRİ
-        setCastError("Failed to share on Farcaster. Please try again."); // ÇEVİRİ
+        console.error("Error sharing mood on Farcaster:", castErr); 
+        setCastError("Failed to share on Farcaster. Please try again."); 
     } finally {
         setIsSubmitting(false);
     }
@@ -172,21 +172,11 @@ export default function Home() {
 
   const handleMapRecenterComplete = useCallback(() => {
     setMapRecenterTrigger(null);
-    console.log("[page.tsx] Map recentering complete, trigger reset."); // ÇEVİRİ
+    console.log("[page.tsx] Map recentering complete, trigger reset."); 
   }, []); 
 
-  const handleRecenterToUserLocation = useCallback(() => {
-    if (view !== ViewState.MAP) { 
-        setView(ViewState.MAP);
-        setTimeout(() => { 
-            triggerRecenter();
-        }, 300); 
-    } else {
-        triggerRecenter();
-    }
-  }, [view, userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]); 
-
-  const triggerRecenter = () => {
+  // triggerRecenter fonksiyonu şimdi bir useCallback içine alındı
+  const triggerRecenter = useCallback(() => {
     if (userLastMoodLocation) { 
         setMapRecenterTrigger({
             coords: userLastMoodLocation.coords,
@@ -200,16 +190,28 @@ export default function Home() {
             animate: true, 
         });
     } else {
-        alert("Location information is not yet determined."); // ÇEVİRİ
+        alert("Location information is not yet determined."); 
     }
-  };
+  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]); // triggerRecenter'ın kendi bağımlılıkları
+
+  // handleRecenterToUserLocation'ın bağımlılık dizisine triggerRecenter eklendi
+  const handleRecenterToUserLocation = useCallback(() => {
+    if (view !== ViewState.MAP) { 
+        setView(ViewState.MAP);
+        setTimeout(() => { 
+            triggerRecenter(); 
+        }, 300); 
+    } else {
+        triggerRecenter(); 
+    }
+  }, [view, triggerRecenter]); // triggerRecenter buraya eklendi
 
 
   if (status === "loading") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
-        <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> // ÇEVİRİ
-        <p className="text-lg text-gray-400 mt-2">Awaiting user permission...</p> // ÇEVİRİ
+        <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> 
+        <p className="text-lg text-gray-400 mt-2">Awaiting user permission...</p> 
       </main>
     );
   }
@@ -217,9 +219,9 @@ export default function Home() {
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
-        <p className="text-2xl text-red-500 font-bold">An error occurred!</p> // ÇEVİRİ
-        <p className="text-xl text-red-300 mt-2">{error?.message || "SDK failed to initialize."}</p> // ÇEVİRİ
-        <p className="mt-4 text-lg">Please check app permissions or refresh your browser.</p> // ÇEVİRİ
+        <p className="text-2xl text-red-500 font-bold">An error occurred!</p> 
+        <p className="text-xl text-red-300 mt-2">{error?.message || "SDK failed to initialize."}</p> 
+        <p className="mt-4 text-lg">Please check app permissions or refresh your browser.</p> 
       </main>
     );
   }
@@ -227,7 +229,7 @@ export default function Home() {
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
       
-      {/* --- Header / Top Bar --- */}
+      {/* Header / Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
         <div className="flex justify-end items-start"> 
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
@@ -236,7 +238,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- Main Content Area --- */}
+      {/* Main Content Area */}
       <div className="flex-1 relative z-0">
         <div className="absolute inset-0">
             <DynamicMap
@@ -255,7 +257,7 @@ export default function Home() {
                     onClick={handleRecenterToUserLocation}
                     disabled={!userLastMoodLocation && !currentDeterminedLocationData} 
                     className={`p-3 rounded-full transition-all bg-slate-800/80 backdrop-blur-lg shadow-lg border border-slate-700/50 ${(!userLastMoodLocation && !currentDeterminedLocationData) ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                    title="Recenter to your location or last mood location" // ÇEVİRİ
+                    title="Recenter to your location or last mood location" 
                 >
                     <Target size={24} />
                 </button>
@@ -280,7 +282,7 @@ export default function Home() {
                     {/* YENİ: Konum uyarı mesajı burada - Kaymayı engellemek için min-h kullanıldı */}
                     <div className="min-h-[24px] flex items-center justify-center mt-2"> 
                         {!currentDeterminedLocationData && (
-                            <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p> // ÇEVİRİ
+                            <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p> 
                         )}
                     </div>
 
@@ -349,7 +351,7 @@ export default function Home() {
             <button
                 onClick={() => setView(ViewState.MAP)}
                 className={`p-3 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
-                title="Switch to Map View" // ÇEVİRİ
+                title="Switch to Map View" 
             >
                 <MapIcon size={24} />
             </button>
@@ -358,7 +360,7 @@ export default function Home() {
                 onClick={handleCastLastMoodToFarcaster}
                 disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid} 
                 className={`p-3 rounded-full transition-all ${!lastLocallyPostedMood || isSubmitting || !user?.fid ? 'text-slate-600 cursor-not-allowed' : 'text-orange-400 hover:text-white'}`}
-                title="Share your last mood on Farcaster" // ÇEVİRİ
+                title="Share your last mood on Farcaster" 
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-square-text">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -379,7 +381,7 @@ export default function Home() {
             <button
                 onClick={() => setView(ViewState.LIST)}
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
-                title="Switch to List View" // ÇEVİRİ
+                title="Switch to List View" 
             >
                 <List size={24} />
             </button>
