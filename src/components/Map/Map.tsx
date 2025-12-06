@@ -1,7 +1,7 @@
 // src/components/Map/Map.tsx
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'; // useMapEvents import edildi
 import * as L from 'leaflet';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { Mood, LocationData } from '@/types/app';
@@ -204,13 +204,24 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
                 }
             };
 
-            // Kullanıcı haritayla etkileşime girdiğinde programatik hareketi kesmek için olay dinleyici
             const handleUserInteraction = () => {
                 if (isProgrammaticMoveRef.current) { // Eğer programatik hareket devam ediyorsa
                     console.log("[MapRecenterHandler] Kullanıcı etkileşimi algılandı, programatik hareket durduruluyor.");
-                    (map as L.Map).stop(); // Devam eden animasyonu durdur
-                    isProgrammaticMoveRef.current = false; // Programatik hareketin kullanıcı tarafından kesildiğini işaretle
-                    onRecenterComplete?.(); // Parent component'e trigger'ı sıfırlamasını bildir
+                    
+                    try {
+                        // map objesinin varlığını ve stop metodunun bir fonksiyon olup olmadığını kontrol et
+                        if (map && typeof map.stop === 'function') {
+                            map.stop(); // Devam eden animasyonu durdur
+                            console.log("[MapRecenterHandler] Harita animasyonu başarıyla durduruldu.");
+                        } else {
+                            console.warn("[MapRecenterHandler] Hata: map.stop() metodu mevcut değil veya fonksiyon değil. Harita animasyonu durdurulamadı.");
+                        }
+                    } catch (e) {
+                        console.error("[MapRecenterHandler] Harita animasyonu durdurulurken beklenmedik bir hata oluştu:", e);
+                    }
+                    
+                    isProgrammaticMoveRef.current = false; 
+                    onRecenterComplete?.(); 
                 }
             };
 
@@ -228,22 +239,45 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
                 map.off('touchstart', handleUserInteraction);
                 map.off('zoomstart', handleUserInteraction);
                 map.off('dragstart', handleUserInteraction);
-                isProgrammaticMoveRef.current = false; // Temizlerken de bayrağı sıfırla
+                isProgrammaticMoveRef.current = false; 
             };
         } else {
             // Anında atlama (setView)
-            map.setView(coords, zoom, { animate: false }); // Animasyon olmadan direkt konuma atla
-            onRecenterComplete?.(); // Anında tamamlandığını bildir (çünkü animasyon yok)
+            map.setView(coords, zoom, { animate: false }); 
+            onRecenterComplete?.(); 
         }
 
-    }, [recenterTrigger, map, onRecenterComplete]); // Bağımlılıklar
+    }, [recenterTrigger, map, onRecenterComplete]); 
 
     return null; 
 }
 
+// YENİ BİLEŞEN: Kullanıcının harita ile etkileşimini izler ve callback çağırır
+interface MapUserInteractionWatcherProps {
+  onMapMove: () => void;
+}
+
+const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ onMapMove }) => {
+  useMapEvents({
+    // Kullanıcı sürüklemeye başladığında
+    dragstart: () => {
+      console.log("[MapUserInteractionWatcher] User started dragging map.");
+      onMapMove();
+    },
+    // Kullanıcı yakınlaştırmaya başladığında
+    zoomstart: () => {
+      console.log("[MapUserInteractionWatcher] User started zooming map.");
+      onMapMove();
+    },
+    // Not: 'move' olayı çok sık tetiklenebilir ve hem programatik hem de kullanıcı hareketleri için geçerlidir.
+    // 'dragstart' ve 'zoomstart' daha net kullanıcı etkileşimi sinyalleri verir.
+  });
+  return null;
+};
+
 // --- Yeni Bileşen: Pinch-to-Zoom sonrası sürüklemeyi sıfırlamak için ---
 const MapTouchFixer: React.FC = () => {
-  const map = useMap(); // Leaflet harita örneğini al
+  const map = useMap(); 
 
   useEffect(() => {
     const handleZoomEnd = () => {
@@ -253,19 +287,17 @@ const MapTouchFixer: React.FC = () => {
       setTimeout(() => {
         map.dragging.enable();
         console.log("[MapTouchFixer] Sürükleme tekrar etkinleştirildi.");
-      }, 50); // Çok kısa bir gecikme (50ms) bu tür resetleme işlemleri için genellikle yeterlidir.
+      }, 50); 
     };
 
-    // Leaflet'in 'zoomend' olayını dinle
     map.on('zoomend', handleZoomEnd);
 
-    // Bileşen kaldırıldığında veya 'map' referansı değiştiğinde olay dinleyicisini temizle
     return () => {
       map.off('zoomend', handleZoomEnd);
     };
-  }, [map]); // 'map' bağımlılığı, useEffect'in sadece bir kez çalışmasını sağlar
+  }, [map]); 
 
-  return null; // Bu bileşen herhangi bir UI render etmez
+  return null; 
 };
 
 
@@ -278,6 +310,7 @@ interface MapComponentProps {
   // animate özelliği eklendi ve zorunlu hale geldi
   recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null; 
   onRecenterComplete?: () => void; 
+  onMapMove?: () => void; // YENİ PROP: Harita manuel olarak hareket ettiğinde çağrılacak callback
 }
 
 export default function Map({
@@ -286,6 +319,7 @@ export default function Map({
   onInitialLocationDetermined,
   recenterTrigger,
   onRecenterComplete, 
+  onMapMove, // YENİ PROP: Destructure edildi
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -445,6 +479,7 @@ export default function Map({
         })}
         
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
+        {onMapMove && <MapUserInteractionWatcher onMapMove={onMapMove} />} {/* YENİ: onMapMove prop'u varsa Watcher'ı render et */}
         <MapTouchFixer /> {/* Yeni touch fix bileşenini buraya ekledik */}
         
       </MapContainer>
