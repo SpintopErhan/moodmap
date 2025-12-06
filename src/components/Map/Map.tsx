@@ -287,7 +287,7 @@ const MapTouchFixer: React.FC = () => {
       setTimeout(() => {
         map.dragging.enable();
         console.log("[MapTouchFixer] Sürükleme tekrar etkinleştirildi.");
-      }, 50); 
+      }, 200); 
     };
 
     map.on('zoomend', handleZoomEnd);
