@@ -71,50 +71,24 @@ const createClusterIcon = (count: number) => {
     });
   };
 
-// --- Draggable List Component for Popup ---
+// --- Draggable List Component for Popup (REFATOR EDİLDİ: Yerel Kaydırma Kullanır) ---
 const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-  const [startScrollTop, setStartScrollTop] = useState(0);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Bu div'e tıklama/dokunma olaylarının haritaya yayılmasını engelle
+  // Özellikle wheel (fare tekerleği) olayının haritayı yakınlaştırmasını önlemek için önemli
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
     e.stopPropagation();
-    setIsDragging(true);
-    setStartY(e.pageY);
-    if (scrollRef.current) {
-      setStartScrollTop(scrollRef.current.scrollTop);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isDragging || !scrollRef.current) return;
-    e.preventDefault(); // Prevent default touch behavior (e.g., page scroll)
-    const y = e.pageY;
-    const walk = (y - startY) * 2;
-    scrollRef.current.scrollTop = startScrollTop - walk;
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDragging(false);
   };
 
   return (
     <div
       ref={scrollRef}
-      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onWheel={(e) => e.stopPropagation()}
+      className="max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none"
+      onMouseDown={handleInteraction} // Fare ile tıklamanın yayılmasını engelle
+      onTouchStart={handleInteraction} // Dokunmanın yayılmasını engelle
+      onWheel={handleInteraction} // Fare tekerleği olayının yayılmasını engelle
+      style={{ touchAction: 'pan-y' }} // Tarayıcıya dikey kaydırma için dokunma hareketlerine izin verdiğini söyle
     >
         {moods.map((m) => (
             <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-200 pb-2 last:border-0 last:pb-0">
@@ -346,7 +320,7 @@ export default function Map({
         touchZoom={true} 
         dragging={true} 
         className="h-full w-full"
-        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' tekrar eklendi
+        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' önemli
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
