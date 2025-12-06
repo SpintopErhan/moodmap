@@ -71,24 +71,73 @@ const createClusterIcon = (count: number) => {
     });
   };
 
-// --- Draggable List Component for Popup (REFATOR EDİLDİ: Yerel Kaydırma Kullanır) ---
+// --- Draggable List Component for Popup (TOUCH EVENTS EKLENDİ VE DÜZENLENDİ) ---
 const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const [startScrollTop, setStartScrollTop] = useState(0);
 
-  // Bu div'e tıklama/dokunma olaylarının haritaya yayılmasını engelle
-  // Özellikle wheel (fare tekerleği) olayının haritayı yakınlaştırmasını önlemek için önemli
-  const handleInteraction = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent) => {
+  // Fare ve dokunma başlangıç olayları için ortak işleyici
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Olayın haritaya yayılmasını engelle
+    setIsDragging(true);
+    // Dokunma olayları için clientY, fare olayları için clientY/pageY kullan
+    // Not: React'ın sentetik olaylarında clientY genellikle hem fare hem de dokunma için çalışır,
+    // ancak 'touches' array'i dokunma olaylarına özgüdür.
+    setStartY('touches' in e ? e.touches[0].clientY : e.clientY);
+    if (scrollRef.current) {
+      setStartScrollTop(scrollRef.current.scrollTop);
+    }
+  };
+
+  // Fare ve dokunma hareket olayları için ortak işleyici
+  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Olayın yayılmasını engelle
+    if (!isDragging || !scrollRef.current) return;
+
+    // Özel listemizi sürüklerken tarayıcının varsayılan kaydırma/yakınlaştırma davranışını engelle
+    // Bu, custom touch dragging için hayati öneme sahiptir.
+    if (e.cancelable) { // Bazı durumlarda preventDefault çağrılamaz, kontrol etmek iyi bir uygulamadır
+      e.preventDefault();
+    }
+    
+    // Dokunma olayları için clientY, fare olayları için clientY/pageY kullan
+    const currentY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const walk = (currentY - startY) * 2; // Hassasiyeti ayarla
+    scrollRef.current.scrollTop = startScrollTop - walk;
+  };
+
+  // Fare ve dokunma bitiş/ayrılma/iptal olayları için ortak işleyici
+  const handleEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Olayın yayılmasını engelle
+    setIsDragging(false);
+  };
+
+  // Tekerlek olayının harita yakınlaştırmasına yayılmasını engelle
+  const handleWheel = (e: React.WheelEvent) => {
     e.stopPropagation();
   };
 
   return (
     <div
       ref={scrollRef}
-      className="max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none"
-      onMouseDown={handleInteraction} // Fare ile tıklamanın yayılmasını engelle
-      onTouchStart={handleInteraction} // Dokunmanın yayılmasını engelle
-      onWheel={handleInteraction} // Fare tekerleği olayının yayılmasını engelle
-      style={{ touchAction: 'pan-y' }} // Tarayıcıya dikey kaydırma için dokunma hareketlerine izin verdiğini söyle
+      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-100 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      // Fare olayları
+      onMouseDown={handleStart}
+      onMouseMove={handleMove}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd} // İşaretçi elementten ayrıldığında sürüklemeyi durdur
+      // Dokunma olayları (mobil için kritik)
+      onTouchStart={handleStart}
+      onTouchMove={handleMove}
+      onTouchEnd={handleEnd}
+      onTouchCancel={handleEnd} // Dokunma iptal edildiğinde sürüklemeyi durdur
+      // Tekerlek olayı (masaüstü için)
+      onWheel={handleWheel}
+      // Tarayıcıya bu element üzerindeki dokunma hareketlerini bizim yöneteceğimizi bildir.
+      // Bu, özel dokunmatik sürükleme için hayati önem taşır.
+      style={{ touchAction: 'none' }} 
     >
         {moods.map((m) => (
             <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-200 pb-2 last:border-0 last:pb-0">
@@ -191,6 +240,33 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
 
     return null; 
 }
+
+// --- Yeni Bileşen: Pinch-to-Zoom sonrası sürüklemeyi sıfırlamak için ---
+const MapTouchFixer: React.FC = () => {
+  const map = useMap(); // Leaflet harita örneğini al
+
+  useEffect(() => {
+    const handleZoomEnd = () => {
+      console.log("[MapTouchFixer] Zoom bitti, sürükleme sıfırlanıyor...");
+      // Harita sürüklemesini geçici olarak kapatıp hemen tekrar aç
+      map.dragging.disable();
+      setTimeout(() => {
+        map.dragging.enable();
+        console.log("[MapTouchFixer] Sürükleme tekrar etkinleştirildi.");
+      }, 50); // Çok kısa bir gecikme (50ms) bu tür resetleme işlemleri için genellikle yeterlidir.
+    };
+
+    // Leaflet'in 'zoomend' olayını dinle
+    map.on('zoomend', handleZoomEnd);
+
+    // Bileşen kaldırıldığında veya 'map' referansı değiştiğinde olay dinleyicisini temizle
+    return () => {
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [map]); // 'map' bağımlılığı, useEffect'in sadece bir kez çalışmasını sağlar
+
+  return null; // Bu bileşen herhangi bir UI render etmez
+};
 
 
 // --- Ana Harita Bileşeni ---
@@ -320,7 +396,7 @@ export default function Map({
         touchZoom={true} 
         dragging={true} 
         className="h-full w-full"
-        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' önemli
+        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' haritanın kendi dokunma olaylarını yönetmesini sağlar
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
@@ -366,6 +442,7 @@ export default function Map({
         })}
         
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
+        <MapTouchFixer /> {/* Yeni touch fix bileşenini buraya ekledik */}
         
       </MapContainer>
     </div>
