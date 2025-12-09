@@ -1,15 +1,21 @@
+// src/components/MoodFeed.tsx
 import React from 'react';
-import { Mood } from '@/types/app'; // Tip yolu güncellendi
+import { Mood } from '@/types/app';
 import { Clock, MapPin } from 'lucide-react';
 
 interface MoodFeedProps {
   moods: Mood[];
+  onCloseRequest?: () => void; // Yeni eklendi: Liste kapanma isteğini bildirmek için
 }
 
-export const MoodFeed: React.FC<MoodFeedProps> = ({ moods }) => {
+export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest }) => { // onCloseRequest eklendi
   return (
     <div className="h-full w-full bg-slate-900/90 backdrop-blur-md rounded-t-3xl p-4 flex flex-col border-t border-slate-700 shadow-2xl">
-      <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6 shrink-0" />
+      {/* Mevcut çizgi div'ine onClick eklendi */}
+      <div 
+        className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6 shrink-0 cursor-pointer" // cursor-pointer eklendi
+        onClick={onCloseRequest} // <<< Buraya onClick eklendi
+      />
       
       <h2 className="text-xl font-bold text-white mb-4 flex items-center">
         Recent Vibes

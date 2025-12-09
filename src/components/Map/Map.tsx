@@ -84,7 +84,8 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!isDragging || !scrollRef.current) return;
-    if ('touches' in e && e.cancelable) {
+    // touchAction: 'none' olduğu için e.preventDefault() artık daha kritik ve doğrudan çalışır
+    if ('touches' in e) { 
       e.preventDefault(); 
     }
     const currentY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -114,7 +115,7 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
       onTouchEnd={handleEnd}
       onTouchCancel={handleEnd}
       onWheel={handleWheel}
-      style={{ touchAction: 'pan-y' }}
+      style={{ touchAction: 'none' }} // <<< DEĞİŞİKLİK BURADA: 'pan-y' yerine 'none'
     >
         {moods.map((m) => (
             <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-700 pb-2 last:border-0 last:pb-0">
@@ -163,7 +164,7 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
 
     const handleUserInteraction = useCallback(() => {
         if (isProgrammaticMoveRef.current) {
-            console.log("[MapRecenterHandler] User interaction detected, stopping programmatic movement."); // Çevrildi
+            console.log("[MapRecenterHandler] User interaction detected, stopping programmatic movement.");
             if (map && typeof map.stop === 'function') {
                 map.stop();
             }
@@ -233,11 +234,11 @@ const MapTouchFixer: React.FC = () => {
 
   useEffect(() => {
     const handleZoomEnd = () => {
-      console.log("[MapTouchFixer] Zoom ended, resetting dragging..."); // Çevrildi
+      console.log("[MapTouchFixer] Zoom ended, resetting dragging...");
       map.dragging.disable();
       setTimeout(() => {
         map.dragging.enable();
-        console.log("[MapTouchFixer] Dragging re-enabled."); // Çevrildi
+        console.log("[MapTouchFixer] Dragging re-enabled.");
       }, 200);
     };
 
@@ -278,7 +279,7 @@ export default function Map({
       setMapCenter(location.coords);
       setMapZoom(location.zoom ?? 14); 
       setHasLocationBeenSet(true);
-      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`); // Konsol çıktısı çevrildi
+      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`);
       onInitialLocationDetermined?.(location);
     }
   }, [hasLocationBeenSet, onInitialLocationDetermined]);
@@ -290,7 +291,7 @@ export default function Map({
    if (navigator.geolocation) {
       timeoutId = setTimeout(() => {
         if (!hasLocationBeenSet) {
-          console.warn("[Map] Location permission timed out (5s). Setting to random location..."); // Konsol çıktısı çevrildi
+          console.warn("[Map] Location permission timed out (5s). Setting to random location...");
           setInitialLocation(getRandomRemoteLocation());
         }
       }, 5000);
@@ -299,26 +300,26 @@ export default function Map({
         (position) => {
           clearTimeout(timeoutId);
           setInitialLocation({
-            name: "Your Current Location", // Çevrildi
+            name: "Your Current Location",
             coords: [position.coords.latitude, position.coords.longitude],
             zoom: 14, 
-            popupText: "Your Current Location", // Çevrildi
+            popupText: "Your Current Location",
             locationType: 'user'
           });
-          console.log("[Map] Location permission granted:", position.coords.latitude, position.coords.longitude); // Konsol çıktısı çevrildi
+          console.log("[Map] Location permission granted:", position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           clearTimeout(timeoutId);
-          console.error("[Map] Location permission denied or error occurred:", error); // Konsol çıktısı çevrildi
+          console.error("[Map] Location permission denied or error occurred:", error);
           if (!hasLocationBeenSet) {
-            console.log("[Map] Location permission denied, setting to random location..."); // Konsol çıktısı çevrildi
+            console.log("[Map] Location permission denied, setting to random location...");
             setInitialLocation(getRandomRemoteLocation());
           }
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      console.warn("[Map] Browser does not support location services. Setting to random location..."); // Konsol çıktısı çevrildi
+      console.warn("[Map] Browser does not support location services. Setting to random location...");
       setInitialLocation(getRandomRemoteLocation());
     }
 
@@ -336,7 +337,7 @@ export default function Map({
 
     moods.forEach((mood) => {
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
-        const key = mood.locationLabel && mood.locationLabel !== "Unknown Location" // "Bilinmeyen Konum" -> "Unknown Location"
+        const key = mood.locationLabel && mood.locationLabel !== "Unknown Location"
             ? `${mood.locationLabel}-${locationCoordsKey}` 
             : locationCoordsKey; 
         
@@ -358,7 +359,7 @@ export default function Map({
   if (!mapCenter) {
     return (
       <div style={{ height, width: '100%' }} className="flex items-center justify-center bg-slate-800 rounded-lg shadow-xl">
-        <p className="text-gray-400">Initializing map...</p> {/* Çevrildi */}
+        <p className="text-gray-400">Initializing map...</p>
       </div>
     );
   }
@@ -400,7 +401,7 @@ export default function Map({
                         {isCluster ? (
                             <div className="min-w-[200px] max-w-[260px]">
                                 <div className="bg-slate-700 text-purple-300 text-xs font-bold px-3 py-2 rounded-t-lg text-center">
-                                    {mainMood.locationLabel || "This Area"} ({group.length}) {/* Çevrildi */}
+                                    {mainMood.locationLabel || "This Area"} ({group.length})
                                 </div>
                                 <ClusterPopupList moods={group} />
                             </div>
@@ -412,7 +413,6 @@ export default function Map({
                                     <div className="text-xs text-gray-300 mt-1 italic break-words">&quot;{mainMood.text}&quot;</div>
                                 )}
                                 <div className="text-[10px] text-gray-400 mt-2">
-                                    {/* `mainMood.locationLabel` is now consistently set in page.tsx */}
                                     {mainMood.locationLabel || new Date(mainMood.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </div>
                             </div>

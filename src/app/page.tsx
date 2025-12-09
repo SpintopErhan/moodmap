@@ -7,7 +7,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { reverseGeocode, forwardGeocode } from '@/lib/geolocation';
 
 import { Button } from '@/components/ui/Button';
-import { MoodFeed } from '@/components/MoodFeed';
+import { MoodFeed } from '@/components/MoodFeed'; // MoodFeed import edildi
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react';
 
@@ -20,7 +20,7 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ),
 });
 
-const MAX_MOOD_TEXT_LENGTH = 24;
+const MAX_MOOD_TEXT_LENGTH =48;
 
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp();
@@ -289,10 +289,23 @@ export default function Home() {
 
       {/* Header / Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
-        <div className="flex justify-end items-start">
+        <div className="flex flex-col items-end gap-2">
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
+            {/* Konum Navigasyon Butonu kullanıcı adının altına taşındı ve koşullu olarak render edildi */}
+            {view !== ViewState.LIST && ( // <<< YENİ EKLENEN KOŞUL
+                <button
+                    onClick={handleRecenterToUserLocation}
+                    disabled={isRecenterButtonDisabled}
+                    className={`p-3 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
+                        ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                    title="Recenter to your location or last mood location"
+                    style={{ marginTop: '50px' }} // Bu değeri istediğin gibi ayarlayabilirsin
+                >
+                    <MapPin size={24} />
+                </button>
+            )}
         </div>
       </div>
 
@@ -311,9 +324,15 @@ export default function Home() {
 
         {/* List View Overlay */}
         {view === ViewState.LIST && (
-            <div className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm">
+            <div
+                className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm"
+                onClick={() => setView(ViewState.MAP)} // Tüm overlay alanına tıklayınca kapanır
+            >
                  <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-                    <MoodFeed moods={moods} />
+                    <MoodFeed
+                        moods={moods}
+                        onCloseRequest={() => setView(ViewState.MAP)}
+                    />
                  </div>
             </div>
         )}
@@ -334,7 +353,7 @@ export default function Home() {
                             </p>
                         )}
                         {currentDeterminedLocationData && currentDeterminedLocationData.locationType === 'fallback' && (
-                            <p className="text-sm text-red-400 text-center font-bold animate-pulse"> {/* <<< Buraya yeni sınıflar eklendi */}
+                            <p className="text-sm text-red-400 text-center font-bold animate-pulse">
                                 Unauthorized access detected, Location: {currentDeterminedLocationData.locationLabel}
                             </p>
                         )}
@@ -410,16 +429,7 @@ export default function Home() {
                 <MapIcon size={24} />
             </button>
 
-            {/* 2. Konum Navigasyon Butonu (MapPin Icon) */}
-            <button
-                onClick={handleRecenterToUserLocation}
-                disabled={isRecenterButtonDisabled}
-                className={`p-3 rounded-full transition-all ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed bg-slate-800/80' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                title="Recenter to your location or last mood location"
-            >
-                <MapPin size={24} />
-            </button>
-
+            {/* 2. Konum Navigasyon Butonu - Artık yukarıda */}
 
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
@@ -429,20 +439,8 @@ export default function Home() {
                 <Plus size={28} strokeWidth={3} />
             </button>
 
-            {/* 4. Farcaster Cast Butonu */}
-            <button
-                onClick={handleCastLastMoodToFarcaster}
-                disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid}
-                className={`p-3 rounded-full transition-all ${!lastLocallyPostedMood || isSubmitting || !user?.fid ? 'text-slate-600 cursor-not-allowed' : 'text-orange-400 hover:text-white'}`}
-                title="Share your last mood on Farcaster"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-message-square-text">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    <path d="M12 8h.01"/>
-                    <path d="M8 12h.01"/>
-                    <path d="M16 12h.01"/>
-                </svg>
-            </button>
+            {/* 4. Farcaster Cast Butonu (Kaldırıldı - Görsel olarak, yorum satırı içinde duruyor) */}
+            {/* ... (yorum satırı halinde bırakıldı) ... */}
 
             {/* 5. List Görünümüne Geçiş Butonu */}
             <button
