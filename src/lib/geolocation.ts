@@ -3,6 +3,12 @@
 const OPENCAGE_API_KEY = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
 
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  // YENİ EKLENDİ: Bu fonksiyonun sadece istemci tarafında (tarayıcıda) çalışmasını sağla
+  if (typeof window === 'undefined') {
+    console.warn("reverseGeocode function called on the server. Skipping browser-specific operations.");
+    return null; // Sunucu tarafında null dön
+  }
+
   if (!OPENCAGE_API_KEY) {
     console.error("OpenCage API key is not defined. Please set NEXT_PUBLIC_OPENCAGE_API_KEY in your environment variables.");
     return null;
@@ -83,6 +89,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
 }
 
 export async function forwardGeocode(address: string): Promise<[number, number] | null> {
+  // YENİ EKLENDİ: Bu fonksiyonun sadece istemci tarafında (tarayıcıda) çalışmasını sağla
+  if (typeof window === 'undefined') {
+    console.warn("forwardGeocode function called on the server. Skipping browser-specific operations.");
+    return null; // Sunucu tarafında null dön
+  }
+
   if (!OPENCAGE_API_KEY) {
     console.error("OpenCage API key is not defined. Please set NEXT_PUBLIC_OPENCAGE_API_KEY in your environment variables.");
     return null;

@@ -1,10 +1,10 @@
 // src/app/page.tsx
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
-import { reverseGeocode, forwardGeocode } from '@/lib/geolocation';
+// import { reverseGeocode, forwardGeocode } from '@/lib/geolocation'; // BU SATIR KALDIRILDI!
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
@@ -22,7 +22,6 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
 
 const MAX_MOOD_TEXT_LENGTH =48;
 
-// Yeni eklendi: Ön tanımlı konumlar
 interface PresetLocation {
   id: string;
   name: string;
@@ -30,7 +29,7 @@ interface PresetLocation {
   zoom: number; // Bu konuma gidildiğinde haritanın zoom seviyesi
 }
 
-// GÜNCELLENDİ: Yeni şehirler ve "My Current Location" kaldırıldı
+// GÜNCELLENDİ: "World" seçeneği eklendi (zoom 3 olarak ayarlandı)
 const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'istanbul', name: 'Istanbul', coords: [41.0082, 28.9784], zoom: 9 },
   { id: 'berlin', name: 'Berlin', coords: [52.5200, 13.4050], zoom: 9 },
@@ -43,6 +42,7 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, // Fas için Marrakech
   { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, // Güney Afrika için Cape Town
   { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
+  { id: 'world', name: 'World', coords: [0, 0], zoom: 3 }, // Yeni eklendi: Tüm dünyayı gösterir, zoom 3
 ];
 
 
@@ -51,12 +51,17 @@ export default function Home() {
 
   const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
-  const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ coords: [number, number], zoom: number, animate: boolean } | null>(null);
+  // GÜNCELLENDİ: mapRecenterTrigger state tipi güncellendi, 'purpose' eklendi
+  const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ 
+    coords: [number, number], 
+    zoom: number, 
+    animate: boolean,
+    purpose: 'userLocation' | 'presetLocation' // Amacı belirtir
+  } | null>(null);
   const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
 
   const [isMapCenteredOnUserLocation, setIsMapCenteredOnUserLocation] = useState(false);
   
-  // Yeni state: Konum listesinin görünürlüğü
   const [showPresetLocations, setShowPresetLocations] = useState(false);
 
   const [view, setView] = useState<ViewState>(ViewState.ADD);
@@ -74,8 +79,31 @@ export default function Home() {
 
   const defaultZoomLevel = useMemo(() => 14, []);
 
+  const [geolocationFunctions, setGeolocationFunctions] = useState<{
+    reverseGeocode: (lat: number, lng: number) => Promise<string | null>;
+    forwardGeocode: (address: string) => Promise<[number, number] | null>;
+  } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('@/lib/geolocation').then(mod => {
+        setGeolocationFunctions({
+          reverseGeocode: mod.reverseGeocode,
+          forwardGeocode: mod.forwardGeocode,
+        });
+        console.log("[page.tsx] Geolocation module loaded dynamically.");
+      }).catch(err => {
+        console.error("Failed to load geolocation module dynamically:", err);
+      });
+    }
+  }, []);
 
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
+      if (!geolocationFunctions) {
+        console.warn("[page.tsx] Geolocation functions not yet loaded, skipping initial location determination.");
+        return; 
+      }
+
       if (!locationData) {
         setCurrentDeterminedLocationData(null);
         console.log("[page.tsx] Location determination failed or denied.");
@@ -90,10 +118,10 @@ export default function Home() {
 
       if (locationData.locationType === 'user') {
         try {
-          const geocodedResult = await reverseGeocode(preciseLat, preciseLng);
+          const geocodedResult = await geolocationFunctions.reverseGeocode(preciseLat, preciseLng);
           if (geocodedResult) {
             finalLocationLabel = geocodedResult;
-            const forwardGeocodedResult = await forwardGeocode(geocodedResult);
+            const forwardGeocodedResult = await geolocationFunctions.forwardGeocode(geocodedResult);
             if (forwardGeocodedResult) {
               geocodedCoords = forwardGeocodedResult;
             } else {
@@ -119,8 +147,9 @@ export default function Home() {
         locationType: locationData.locationType,
       });
 
-      setIsMapCenteredOnUserLocation(true);
-    }, [setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
+      // Başlangıçta kullanıcı konumuna odaklandığı için true
+      setIsMapCenteredOnUserLocation(true); 
+    }, [geolocationFunctions, setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
 
 
   const handleAddMood = useCallback(async () => {
@@ -180,15 +209,18 @@ export default function Home() {
         zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         popupText: moodToPost.text || moodToPost.emoji,
     });
+    // GÜNCELLENDİ: 'purpose' eklendi
     setMapRecenterTrigger({
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         animate: false,
+        purpose: 'userLocation', // Mood eklendikten sonra kullanıcının konumuna gitmek sayılıyor
     });
 
     setLastLocallyPostedMood(moodToPost);
 
-    setIsMapCenteredOnUserLocation(true);
+    // Mood ekledikten sonra kullanıcının konumuna merkezlendiği için true
+    setIsMapCenteredOnUserLocation(true); 
 
     setView(ViewState.MAP);
     setStatusText('');
@@ -197,7 +229,7 @@ export default function Home() {
   }, [
     currentDeterminedLocationData, 
     user?.fid, 
-    user?.username, // 'user?.username' bağımlılığı eklendi
+    user?.username,
     defaultZoomLevel, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
@@ -256,27 +288,36 @@ export default function Home() {
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
   }, [isDragging, startX, scrollLeft]);
 
-
+  // GÜNCELLENDİ: handleMapRecenterComplete mantığı
   const handleMapRecenterComplete = useCallback(() => {
-    setMapRecenterTrigger(null);
-    setIsMapCenteredOnUserLocation(true);
+    // Sadece tetikleyici mevcutsa ve amacı 'userLocation' ise true yap
+    if (mapRecenterTrigger?.purpose === 'userLocation') {
+      setIsMapCenteredOnUserLocation(true); 
+    } else {
+      setIsMapCenteredOnUserLocation(false); // Diğer durumlarda (presetler vb.) false yap
+    }
+    setMapRecenterTrigger(null); // Her zaman trigger'ı temizle
     console.log("[page.tsx] Map recentering complete, trigger reset and map centered status updated.");
-  }, [setMapRecenterTrigger, setIsMapCenteredOnUserLocation]);
+  }, [setMapRecenterTrigger, setIsMapCenteredOnUserLocation, mapRecenterTrigger]); // mapRecenterTrigger bağımlılıklara eklendi
 
   const handleMapUserMove = useCallback(() => {
-    setIsMapCenteredOnUserLocation(false);
+    // Kullanıcı haritayı hareket ettirirse merkezden çıktık
+    setIsMapCenteredOnUserLocation(false); 
     console.log("[page.tsx] Map moved by user, recenter status reset.");
   }, [setIsMapCenteredOnUserLocation]);
 
   const triggerRecenter = useCallback(() => {
     const targetLocationData = userLastMoodLocation || currentDeterminedLocationData;
     if (targetLocationData) {
+        // GÜNCELLENDİ: 'purpose' eklendi
         setMapRecenterTrigger({
             coords: targetLocationData.coords,
             zoom: targetLocationData.zoom || defaultZoomLevel,
             animate: true,
+            purpose: 'userLocation', // Recenter butonu her zaman userLocation hedefler
         });
-        setIsMapCenteredOnUserLocation(false);
+        // Recenter başladığında henüz merkezlenmedik, bu yüzden false
+        setIsMapCenteredOnUserLocation(false); 
     } else {
         alert("Location information is not yet determined.");
     }
@@ -296,47 +337,35 @@ export default function Home() {
   const isRecenterButtonDisabled = useMemo(() => {
     const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
     const notOnMapView = view !== ViewState.MAP;
-    const isCurrentlyCentered = isMapCenteredOnUserLocation;
+    const isCurrentlyCentered = isMapCenteredOnUserLocation; // Bu değer artık doğru davranmalı
     return noLocationData || notOnMapView || isCurrentlyCentered;
   }, [userLastMoodLocation, currentDeterminedLocationData, view, isMapCenteredOnUserLocation]);
 
-  // Yeni eklendi: Harita butonuna tıklandığında ne olacağını yönetir
   const handleMapButtonClick = useCallback(() => {
     if (view !== ViewState.MAP) {
       setView(ViewState.MAP);
       // Harita görünümüne geçtikten sonra konum listesini aç
-      setTimeout(() => setShowPresetLocations(true), 0); // Küçük bir gecikme ile (veya hiç olmadan) açabiliriz
+      setTimeout(() => setShowPresetLocations(true), 0);
     } else {
       // Zaten harita görünümündeyse, listeyi açıp kapat
       setShowPresetLocations(prev => !prev);
     }
   }, [view, setView, setShowPresetLocations]);
 
-  // GÜNCELLENDİ: Preset konumlarından birine tıklandığında
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
-    // ESLint hatası çözüldü: 'let' yerine 'const' kullanıldı
     const targetCoords = preset.coords; 
     const targetZoom = preset.zoom;    
 
-    // "My Current Location" artık listede olmadığı için bu kontrol gereksiz.
-    // Ancak gelecekte benzer bir dinamik seçenek eklenebilirse diye bırakıyorum.
-    // if (preset.id === 'user_location' && currentDeterminedLocationData) {
-    //   targetCoords = currentDeterminedLocationData.coords;
-    //   targetZoom = currentDeterminedLocationData.zoom || defaultZoomLevel;
-    // } else if (preset.id === 'user_location') {
-    //     alert("Your current location is not determined yet!");
-    //     setShowPresetLocations(false); // Listeyi kapat
-    //     return;
-    // }
-
+    // GÜNCELLENDİ: 'purpose' eklendi
     setMapRecenterTrigger({
         coords: targetCoords,
         zoom: targetZoom,
-        animate: true, // Fly-to animasyonunu etkinleştir
+        animate: true,
+        purpose: 'presetLocation', // Bir preset konumuna gidiliyor
     });
-    setShowPresetLocations(false); // Listeyi kapat
-    setIsMapCenteredOnUserLocation(false); // Harita kaydırıldığı için merkezden çıkış sinyali
-  // ESLint uyarısı çözüldü: Kullanılmayan bağımlılıklar kaldırıldı
+    setShowPresetLocations(false);
+    // Preset'e gidince artık kullanıcı konumunda değiliz, bu yüzden false
+    setIsMapCenteredOnUserLocation(false); 
   }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation]);
 
 
@@ -365,7 +394,7 @@ export default function Home() {
       {/* Full-screen backdrop for closing overlays (Presets ve diğerleri için) */}
       {showPresetLocations && (
         <div
-            className="absolute inset-0 z-49 pointer-events-auto" // Z index'i Bottom Nav'dan yüksek, Preset List'ten düşük
+            className="absolute inset-0 z-49 pointer-events-auto"
             onClick={() => setShowPresetLocations(false)}
         ></div>
       )}
@@ -409,7 +438,7 @@ export default function Home() {
         {view === ViewState.LIST && (
             <div
                 className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto"
-                onClick={() => setView(ViewState.MAP)} // Tüm overlay alanına tıklayınca kapanır
+                onClick={() => setView(ViewState.MAP)} 
             >
                  <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
                     <MoodFeed
@@ -504,51 +533,45 @@ export default function Home() {
         <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50 pointer-events-auto">
 
             {/* 1. Harita Görünümüne Geçiş Butonu ve Konum Listesi */}
-            <div className="relative"> {/* Konum listesini konumlandırmak için relative */}
+            <div className="relative">
               <button
-                  onClick={handleMapButtonClick} // Yeni handler
+                  onClick={handleMapButtonClick}
                   className={`p-1.5 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
                   title="Switch to Map View / Open Preset Locations"
               >
                   <MapIcon size={24} />
               </button>
 
-              {/* GÜNCELLENDİ: Preset Konum Listesi Overlay - Genişlik ve boşluk ayarları yapıldı */}
               {showPresetLocations && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
+                // Kullanıcının isteği üzerine mb-5 bırakıldı
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
                   <ul className="text-sm text-slate-300">
                     {PRESET_LOCATIONS.map(preset => (
                       <li
                         key={preset.id}
                         className="px-4 py-2 hover:bg-slate-700/50 cursor-pointer flex items-center gap-2"
-                        onClick={(e) => { e.stopPropagation(); handlePresetLocationClick(preset); }} // Olayın dışarıya yayılmasını engeller
+                        onClick={(e) => { e.stopPropagation(); handlePresetLocationClick(preset); }}
                       >
                         <MapPin size={16} /> {preset.name}
                       </li>
                     ))}
                   </ul>
-                  {/* Küçük bir ok, listenin butondan geldiğini belirtmek için */}
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-[-8px] w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-slate-800/90"></div>
                 </div>
               )}
             </div>
 
-            {/* 2. Konum Navigasyon Butonu - Artık yukarıda */}
-
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
-                onClick={() => setView(ViewState.ADD)}
+                onClick={() => { setView(ViewState.ADD); setShowPresetLocations(false); }}
                 className="bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900"
             >
                 <Plus size={28} strokeWidth={3} />
             </button>
 
-            {/* 4. Farcaster Cast Butonu (Kaldırıldı - Görsel olarak, yorum satırı içinde duruyor) */}
-            {/* ... (yorum satırı halinde bırakıldı) ... */}
-
             {/* 5. List Görünümüne Geçiş Butonu */}
             <button
-                onClick={() => setView(ViewState.LIST)}
+                onClick={() => { setView(ViewState.LIST); setShowPresetLocations(false); }}
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
                 title="Switch to List View"
             >
