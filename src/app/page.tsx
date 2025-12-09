@@ -37,10 +37,10 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'paris', name: 'Paris', coords: [48.8566, 2.3522], zoom: 9 },
   { id: 'london', name: 'London', coords: [51.5074, 0.1278], zoom: 9 },
   { id: 'barcelona', name: 'Barcelona', coords: [41.3851, 2.1734], zoom: 9 },
-  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 9 },
-  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 9 },
+  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 8 },
+  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 8 },
   { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 9 },
-  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 9 }, // Fas için Marrakech
+  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, // Fas için Marrakech
   { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, // Güney Afrika için Cape Town
   { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
 ];
@@ -312,10 +312,11 @@ export default function Home() {
     }
   }, [view, setView, setShowPresetLocations]);
 
-  // Yeni eklendi: Preset konumlarından birine tıklandığında
+  // GÜNCELLENDİ: Preset konumlarından birine tıklandığında
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
-    let targetCoords = preset.coords;
-    let targetZoom = preset.zoom;
+    // ESLint hatası çözüldü: 'let' yerine 'const' kullanıldı
+    const targetCoords = preset.coords; 
+    const targetZoom = preset.zoom;    
 
     // "My Current Location" artık listede olmadığı için bu kontrol gereksiz.
     // Ancak gelecekte benzer bir dinamik seçenek eklenebilirse diye bırakıyorum.
@@ -335,7 +336,8 @@ export default function Home() {
     });
     setShowPresetLocations(false); // Listeyi kapat
     setIsMapCenteredOnUserLocation(false); // Harita kaydırıldığı için merkezden çıkış sinyali
-  }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation, currentDeterminedLocationData, defaultZoomLevel]);
+  // ESLint uyarısı çözüldü: Kullanılmayan bağımlılıklar kaldırıldı
+  }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation]);
 
 
   if (status === "loading") {
@@ -513,7 +515,7 @@ export default function Home() {
 
               {/* GÜNCELLENDİ: Preset Konum Listesi Overlay - Genişlik ve boşluk ayarları yapıldı */}
               {showPresetLocations && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
                   <ul className="text-sm text-slate-300">
                     {PRESET_LOCATIONS.map(preset => (
                       <li
