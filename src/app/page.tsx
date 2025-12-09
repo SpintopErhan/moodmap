@@ -1,10 +1,10 @@
 // src/app/page.tsx
 "use client";
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
-import { reverseGeocode, forwardGeocode } from '@/lib/geolocation'; // <<< forwardGeocode eklendi
+import { reverseGeocode, forwardGeocode } from '@/lib/geolocation';
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
@@ -20,6 +20,8 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ),
 });
 
+const MAX_MOOD_TEXT_LENGTH = 24;
+
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp();
 
@@ -28,9 +30,7 @@ export default function Home() {
   const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ coords: [number, number], zoom: number, animate: boolean } | null>(null);
   const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
 
-  // YENİ: Haritanın kullanıcının konumuna odaklanıp odaklanmadığını tutar.
   const [isMapCenteredOnUserLocation, setIsMapCenteredOnUserLocation] = useState(false);
-
 
   const [view, setView] = useState<ViewState>(ViewState.ADD);
 
@@ -45,6 +45,9 @@ export default function Home() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
+  const defaultZoomLevel = useMemo(() => 14, []);
+
+
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
       if (!locationData) {
         setCurrentDeterminedLocationData(null);
@@ -52,46 +55,48 @@ export default function Home() {
         return;
       }
 
-      console.log("[page.tsx] Precise user location determined:", locationData);
+      console.log("[page.tsx] Initial location data from Map:", locationData);
 
-      const [preciseLat, preciseLng] = locationData.coords; // Kullanıcının kesin koordinatlarını al
-      let locationLabel: string | null = null;
-      let geocodedCoords: [number, number] | null = null; // Yeni: Konum etiketinin merkezi koordinatları
+      const [preciseLat, preciseLng] = locationData.coords;
+      let finalLocationLabel: string = "Unknown Location";
+      let geocodedCoords: [number, number] = locationData.coords;
 
-      try {
-        // 1. Kesin koordinatlardan adres metnini al (Reverse Geocoding)
-        locationLabel = await reverseGeocode(preciseLat, preciseLng);
-        console.log("[page.tsx] Reverse geocoded location label:", locationLabel);
-
-        if (locationLabel) {
-          // 2. Adres metninden merkezi koordinatları al (Forward Geocoding)
-          geocodedCoords = await forwardGeocode(locationLabel);
-          console.log("[page.tsx] Forward geocoded central coordinates for label:", geocodedCoords);
+      if (locationData.locationType === 'user') {
+        try {
+          const geocodedResult = await reverseGeocode(preciseLat, preciseLng);
+          if (geocodedResult) {
+            finalLocationLabel = geocodedResult;
+            const forwardGeocodedResult = await forwardGeocode(geocodedResult);
+            if (forwardGeocodedResult) {
+              geocodedCoords = forwardGeocodedResult;
+            } else {
+              console.warn("[page.tsx] Forward geocoding failed for user location, using precise coords.");
+            }
+          } else {
+            console.warn("[page.tsx] Reverse geocoding returned no label for user location, using 'Unknown Location'.");
+          }
+        } catch (error) {
+          console.error("[page.tsx] Error during geocoding process for user location:", error);
         }
-
-      } catch (error) {
-        console.error("[page.tsx] Error during geocoding process:", error);
+      } else {
+        finalLocationLabel = locationData.name || "Unknown Location";
+        geocodedCoords = locationData.coords;
       }
 
-      // State'i güncelle:
-      // coords alanı artık kullanıcının kesin konumu değil, belirlenen bölgenin merkezi olacak.
-      // Eğer forward geocoding başarısız olursa, anonimliği korumak adına varsayılan olarak null bırakabiliriz
-      // veya yine de orijinal kesin koordinatları kullanabiliriz (bu anonimliği azaltır).
-      // Şu an için forward geocoding başarısız olursa kesin koordinatları kullanma eğilimindeyiz,
-      // ancak daha anonim bir yaklaşım için farklı bir fallback düşünülebilir.
       setCurrentDeterminedLocationData({
-        coords: geocodedCoords || locationData.coords, // Eğer merkezi koordinat alınamazsa, kesin koordinatları kullan
+        coords: geocodedCoords,
         timestamp: locationData.timestamp,
         accuracy: locationData.accuracy,
-        locationLabel: locationLabel || "Unknown Location", // API'den gelmezse varsayılan değer
+        locationLabel: finalLocationLabel,
+        zoom: locationData.zoom ?? defaultZoomLevel,
+        locationType: locationData.locationType,
       });
 
-      // Harita doğal olarak ilk konuma odaklanmış olacağı için bu bayrağı ayarla
       setIsMapCenteredOnUserLocation(true);
-    }, []); // Bağımlılık dizisi boş bırakıldı.
-    
+    }, [setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
 
-  const handleAddMood = async () => {
+
+  const handleAddMood = useCallback(async () => {
     if (!currentDeterminedLocationData) {
         alert("Location information is not available to share your mood. Please determine the location.");
         return;
@@ -145,27 +150,24 @@ export default function Home() {
     setUserLastMoodLocation({
         name: moodToPost.locationLabel || "Unknown Location",
         coords: [moodToPost.location.lat, moodToPost.location.lng],
-        zoom: currentDeterminedLocationData?.zoom || 14,
+        zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         popupText: moodToPost.text || moodToPost.emoji,
     });
     setMapRecenterTrigger({
         coords: [moodToPost.location.lat, moodToPost.location.lng],
-        zoom: currentDeterminedLocationData?.zoom || 14,
+        zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         animate: false,
     });
 
     setLastLocallyPostedMood(moodToPost);
 
-    // Yeni mood eklendiğinde haritanın kullanıcının konumuna odaklandığını varsayabiliriz
-    // çünkü harita otomatik olarak bu konuma odaklanacak.
     setIsMapCenteredOnUserLocation(true);
-
 
     setView(ViewState.MAP);
     setStatusText('');
     setIsSubmitting(false);
 
-  };
+  }, [currentDeterminedLocationData, user?.fid, defaultZoomLevel, moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, setIsMapCenteredOnUserLocation, setView, setStatusText]);
 
   const handleCastLastMoodToFarcaster = useCallback(async () => {
     if (!lastLocallyPostedMood) {
@@ -195,61 +197,54 @@ export default function Home() {
     }
   }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
     setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
     setScrollLeft(scrollContainerRef.current.scrollLeft);
-  };
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !scrollContainerRef.current) return;
     e.preventDefault();
     const x = e.pageX - scrollContainerRef.current.offsetLeft;
     const walk = (x - startX) * 1.5;
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-  };
+  }, [isDragging, startX, scrollLeft]);
 
-  // GÜNCELLEME: Harita yeniden ortalamayı bitirdiğinde, haritanın odaklandığını işaretle.
+
   const handleMapRecenterComplete = useCallback(() => {
     setMapRecenterTrigger(null);
-    setIsMapCenteredOnUserLocation(true); // <--- Harita odaklandı
+    setIsMapCenteredOnUserLocation(true);
     console.log("[page.tsx] Map recentering complete, trigger reset and map centered status updated.");
-  }, []);
+  }, [setMapRecenterTrigger, setIsMapCenteredOnUserLocation]);
 
-  // YENİ: Harita manuel olarak hareket ettirildiğinde çağrılacak callback.
   const handleMapUserMove = useCallback(() => {
-    setIsMapCenteredOnUserLocation(false); // <--- Harita artık odaklanmış değil
+    setIsMapCenteredOnUserLocation(false);
     console.log("[page.tsx] Map moved by user, recenter status reset.");
-  }, []);
+  }, [setIsMapCenteredOnUserLocation]);
 
   const triggerRecenter = useCallback(() => {
-    if (userLastMoodLocation) {
+    const targetLocationData = userLastMoodLocation || currentDeterminedLocationData;
+    if (targetLocationData) {
         setMapRecenterTrigger({
-            coords: userLastMoodLocation.coords,
-            zoom: userLastMoodLocation.zoom || 14,
+            coords: targetLocationData.coords,
+            zoom: targetLocationData.zoom || defaultZoomLevel,
             animate: true,
         });
-        setIsMapCenteredOnUserLocation(false); // <--- Yeniden ortalama tetikleniyor, eski durum artık geçerli değil
-    } else if (currentDeterminedLocationData) {
-        setMapRecenterTrigger({
-            coords: currentDeterminedLocationData.coords,
-            zoom: currentDeterminedLocationData.zoom || 14,
-            animate: true,
-        });
-        setIsMapCenteredOnUserLocation(false); // <--- Yeniden ortalama tetikleniyor, eski durum artık geçerli değil
+        setIsMapCenteredOnUserLocation(false);
     } else {
         alert("Location information is not yet determined.");
     }
-  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger]);
+  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
 
   const handleRecenterToUserLocation = useCallback(() => {
     if (view !== ViewState.MAP) {
@@ -261,6 +256,13 @@ export default function Home() {
         triggerRecenter();
     }
   }, [view, triggerRecenter]);
+
+  const isRecenterButtonDisabled = useMemo(() => {
+    const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
+    const notOnMapView = view !== ViewState.MAP;
+    const isCurrentlyCentered = isMapCenteredOnUserLocation;
+    return noLocationData || notOnMapView || isCurrentlyCentered;
+  }, [userLastMoodLocation, currentDeterminedLocationData, view, isMapCenteredOnUserLocation]);
 
 
   if (status === "loading") {
@@ -303,7 +305,7 @@ export default function Home() {
                 height="100%"
                 recenterTrigger={mapRecenterTrigger}
                 onRecenterComplete={handleMapRecenterComplete}
-                onMapMove={handleMapUserMove} // YENİ: Harita hareketi algılayıcısı
+                onMapMove={handleMapUserMove}
             />
         </div>
 
@@ -325,6 +327,19 @@ export default function Home() {
                     <div className="min-h-[24px] flex items-center justify-center mt-2">
                         {!currentDeterminedLocationData && (
                             <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p>
+                        )}
+                        {currentDeterminedLocationData && currentDeterminedLocationData.locationType === 'user' && (
+                            <p className="text-sm text-green-400 text-center">
+                                Location found: {currentDeterminedLocationData.locationLabel}
+                            </p>
+                        )}
+                        {currentDeterminedLocationData && currentDeterminedLocationData.locationType === 'fallback' && (
+                            <p className="text-sm text-red-400 text-center font-bold animate-pulse"> {/* <<< Buraya yeni sınıflar eklendi */}
+                                Unauthorized access detected, Location: {currentDeterminedLocationData.locationLabel}
+                            </p>
+                        )}
+                        {castError && (
+                            <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                         )}
                     </div>
 
@@ -357,14 +372,14 @@ export default function Home() {
                         <div className="relative">
                             <input
                                 type="text"
-                                maxLength={24}
+                                maxLength={MAX_MOOD_TEXT_LENGTH}
                                 placeholder="Add a note... (optional)"
                                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 pr-14 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
                                 value={statusText}
                                 onChange={(e) => setStatusText(e.target.value)}
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
-                                {statusText.length}/24
+                                {statusText.length}/{MAX_MOOD_TEXT_LENGTH}
                             </span>
                         </div>
 
@@ -377,10 +392,6 @@ export default function Home() {
                             </Button>
                         </div>
                     </div>
-
-                    {castError && (
-                        <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
-                    )}
                  </div>
              </div>
         )}
@@ -400,23 +411,14 @@ export default function Home() {
             </button>
 
             {/* 2. Konum Navigasyon Butonu (MapPin Icon) */}
-            {(() => {
-                const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
-                const notOnMapView = view !== ViewState.MAP;
-                // GÜNCELLEME: isMapCenteredOnUserLocation durumunu da ekledik
-                const isRecenterButtonDisabled = noLocationData || notOnMapView || isMapCenteredOnUserLocation;
-
-                return (
-                    <button
-                        onClick={handleRecenterToUserLocation}
-                        disabled={isRecenterButtonDisabled}
-                        className={`p-3 rounded-full transition-all ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed bg-slate-800/80' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                        title="Recenter to your location or last mood location"
-                    >
-                        <MapPin size={24} />
-                    </button>
-                );
-            })()}
+            <button
+                onClick={handleRecenterToUserLocation}
+                disabled={isRecenterButtonDisabled}
+                className={`p-3 rounded-full transition-all ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed bg-slate-800/80' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                title="Recenter to your location or last mood location"
+            >
+                <MapPin size={24} />
+            </button>
 
 
             {/* 3. Add Mood Butonu (+) - Merkezde */}
@@ -427,7 +429,7 @@ export default function Home() {
                 <Plus size={28} strokeWidth={3} />
             </button>
 
-            {/* 4. Farcaster Cast Butonu (Yeni Konumu) */}
+            {/* 4. Farcaster Cast Butonu */}
             <button
                 onClick={handleCastLastMoodToFarcaster}
                 disabled={!lastLocallyPostedMood || isSubmitting || !user?.fid}

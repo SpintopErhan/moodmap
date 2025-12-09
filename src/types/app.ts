@@ -9,16 +9,19 @@ export interface LocationData {
   coords: [number, number]; // Haritanın merkez koordinatları [latitude, longitude]
 
   // navigator.geolocation API'sinden gelen alanlar:
-  timestamp?: number; // <<< Bu satır eklendi ve isteğe bağlı hale getirildi
-  accuracy?: number;  // <<< Bu satır eklendi ve isteğe bağlı hale getirildi
+  timestamp?: number;
+  accuracy?: number;
 
   // Reverse Geocoding ile elde edilen konum etiketi:
   locationLabel?: string; // Konumun insan tarafından okunabilir adı (isteğe bağlı)
 
   // Harita/Marker konfigürasyonu için kullanılan (isteğe bağlı) alanlar:
-  name?: string;      // İsteğe bağlı hale getirildi
-  zoom?: number;      // İsteğe bağlı hale getirildi
-  popupText?: string; // İsteğe bağlı hale getirildi
+  name?: string;
+  zoom?: number;
+  popupText?: string;
+
+  // Yeni eklenen alan: Konumun türünü belirtir
+  locationType?: 'user' | 'fallback'; // <<< BU SATIR EKLENDİ
 }
 
 export interface Mood {
