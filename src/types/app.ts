@@ -6,11 +6,19 @@ export interface Location {
 }
 
 export interface LocationData {
-  name: string;
   coords: [number, number]; // Haritanın merkez koordinatları [latitude, longitude]
-  zoom: number; // Haritanın başlangıç zoom seviyesi
-  popupText: string; // Marker pop-up'ında görünecek metin
+
+  // navigator.geolocation API'sinden gelen alanlar:
+  timestamp?: number; // <<< Bu satır eklendi ve isteğe bağlı hale getirildi
+  accuracy?: number;  // <<< Bu satır eklendi ve isteğe bağlı hale getirildi
+
+  // Reverse Geocoding ile elde edilen konum etiketi:
   locationLabel?: string; // Konumun insan tarafından okunabilir adı (isteğe bağlı)
+
+  // Harita/Marker konfigürasyonu için kullanılan (isteğe bağlı) alanlar:
+  name?: string;      // İsteğe bağlı hale getirildi
+  zoom?: number;      // İsteğe bağlı hale getirildi
+  popupText?: string; // İsteğe bağlı hale getirildi
 }
 
 export interface Mood {

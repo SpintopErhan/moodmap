@@ -57,12 +57,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
       }
 
       // 2. İl (Province) - "Sakarya" gibi
-      // let provinceFound = false; // <<< BU SATIR SİLİNDİ
+      // 'provinceFound' değişkeni artık kullanılmıyor ve kaldırıldı.
       if (addUniqueComponent(components.state)) {
-        // provinceFound = true; // <<< BU SATIR SİLİNDİ
+        // Doğrudan addUniqueComponent çağrısı yeterli
       } else if (components.city && !addedParts.has(components.city)) {
         if (addUniqueComponent(components.city)) {
-          // provinceFound = true; // <<< BU SATIR SİLİNDİ
+          // Doğrudan addUniqueComponent çağrısı yeterli
         }
       }
 

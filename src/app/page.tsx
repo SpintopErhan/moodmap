@@ -4,7 +4,7 @@
 import { useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
-import { reverseGeocode } from '@/lib/geolocation';
+import { reverseGeocode, forwardGeocode } from '@/lib/geolocation'; // <<< forwardGeocode eklendi
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
@@ -45,35 +45,50 @@ export default function Home() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => { // <<< async ve useCallback eklendi
+   const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
       if (!locationData) {
         setCurrentDeterminedLocationData(null);
         console.log("[page.tsx] Location determination failed or denied.");
         return;
       }
 
-      console.log("[page.tsx] Location determined by map component:", locationData);
+      console.log("[page.tsx] Precise user location determined:", locationData);
 
-      // Reverse geocoding işlemini burada yap
-      const [lat, lng] = locationData.coords;
+      const [preciseLat, preciseLng] = locationData.coords; // Kullanıcının kesin koordinatlarını al
       let locationLabel: string | null = null;
+      let geocodedCoords: [number, number] | null = null; // Yeni: Konum etiketinin merkezi koordinatları
+
       try {
-        locationLabel = await reverseGeocode(lat, lng);
+        // 1. Kesin koordinatlardan adres metnini al (Reverse Geocoding)
+        locationLabel = await reverseGeocode(preciseLat, preciseLng);
         console.log("[page.tsx] Reverse geocoded location label:", locationLabel);
+
+        if (locationLabel) {
+          // 2. Adres metninden merkezi koordinatları al (Forward Geocoding)
+          geocodedCoords = await forwardGeocode(locationLabel);
+          console.log("[page.tsx] Forward geocoded central coordinates for label:", geocodedCoords);
+        }
+
       } catch (error) {
-        console.error("[page.tsx] Error during reverse geocoding:", error);
-        locationLabel = "Unknown Location (Geocoding failed)";
+        console.error("[page.tsx] Error during geocoding process:", error);
       }
 
-      // Yeni locationLabel ile state'i güncelle
+      // State'i güncelle:
+      // coords alanı artık kullanıcının kesin konumu değil, belirlenen bölgenin merkezi olacak.
+      // Eğer forward geocoding başarısız olursa, anonimliği korumak adına varsayılan olarak null bırakabiliriz
+      // veya yine de orijinal kesin koordinatları kullanabiliriz (bu anonimliği azaltır).
+      // Şu an için forward geocoding başarısız olursa kesin koordinatları kullanma eğilimindeyiz,
+      // ancak daha anonim bir yaklaşım için farklı bir fallback düşünülebilir.
       setCurrentDeterminedLocationData({
-        ...locationData,
+        coords: geocodedCoords || locationData.coords, // Eğer merkezi koordinat alınamazsa, kesin koordinatları kullan
+        timestamp: locationData.timestamp,
+        accuracy: locationData.accuracy,
         locationLabel: locationLabel || "Unknown Location", // API'den gelmezse varsayılan değer
       });
 
       // Harita doğal olarak ilk konuma odaklanmış olacağı için bu bayrağı ayarla
       setIsMapCenteredOnUserLocation(true);
-    }, []); // Bağımlılık dizisini boş bırakabiliriz çünkü dışarıdan bir şeye bağlı değil.
+    }, []); // Bağımlılık dizisi boş bırakıldı.
     
 
   const handleAddMood = async () => {

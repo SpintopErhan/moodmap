@@ -318,11 +318,11 @@ export default function Map({
   moods,
   onInitialLocationDetermined,
   recenterTrigger,
-  onRecenterComplete, 
-  onMapMove, // YENİ PROP: Destructure edildi
+  onRecenterComplete,
+  onMapMove,
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [mapZoom, setMapZoom] = useState<number>(1);
+  const [mapZoom, setMapZoom] = useState<number>(1); // Başlangıç zoom seviyesi
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
 
   useEffect(() => {
@@ -331,20 +331,22 @@ export default function Map({
     const setLocation = (location: LocationData) => {
       if (!hasLocationBeenSet) {
         setMapCenter(location.coords);
-        setMapZoom(location.zoom);
+        // Hata veren satır: location.zoom ?? 14 eklemesi yapıldı
+        setMapZoom(location.zoom ?? 14); // <<< BURAYI GÜNCELLEDİK
         setHasLocationBeenSet(true);
-        console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom})`);
+        console.log(`[Map] Konum ayarlandı: ${location.name} (Zoom: ${location.zoom ?? 14})`); // Logu da güncelleyebiliriz
         if (onInitialLocationDetermined) {
-          onInitialLocationDetermined(location); 
+          onInitialLocationDetermined(location);
         }
       }
     };
 
-    if (navigator.geolocation) {
+   if (navigator.geolocation) {
       timeoutId = setTimeout(() => {
         if (!hasLocationBeenSet) {
           console.warn("[Map] Konum izni süresi doldu (5s). Rastgele konuma ayarlanıyor...");
-          setLocation(getRandomRemoteLocation());
+          // getRandomRemoteLocation'ın her zaman zoom döndürdüğünü biliyoruz, bu yüzden burada `??` zorunlu değil
+          setLocation(getRandomRemoteLocation()); 
         }
       }, 5000);
 
@@ -356,7 +358,7 @@ export default function Map({
           setLocation({
             name: "Mevcut Konumunuz",
             coords: [latitude, longitude],
-            zoom: 14,
+            zoom: 14, // Burada zoom zaten kesinlikle 14 olarak atanıyor
             popupText: "Mevcut Konumunuz"
           });
           
@@ -367,6 +369,7 @@ export default function Map({
           console.error("[Map] Konum izni reddedildi veya hata oluştu:", error);
           if (!hasLocationBeenSet) {
             console.log("[Map] Konum izni reddedildi, rastgele konuma ayarlanıyor...");
+            // getRandomRemoteLocation'ın her zaman zoom döndürdüğünü biliyoruz
             setLocation(getRandomRemoteLocation());
           }
         },
@@ -378,7 +381,7 @@ export default function Map({
     }
 
     return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, onInitialLocationDetermined]); 
+  }, [hasLocationBeenSet, onInitialLocationDetermined]);
 
   // Clustering Logic with stable keys
   const clusteredMoods = useMemo(() => {
