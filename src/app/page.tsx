@@ -368,6 +368,20 @@ export default function Home() {
     setIsMapCenteredOnUserLocation(false); 
   }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation]);
 
+  // YENİ EKLENDİ: List View toggle handler
+  const handleListViewToggle = useCallback(() => {
+    // Preset konum listesini her zaman kapat
+    setShowPresetLocations(false); 
+
+    // Eğer ViewState zaten LIST ise, MAP görünümüne geç
+    if (view === ViewState.LIST) {
+      setView(ViewState.MAP);
+    } else {
+      // Değilse, LIST görünümüne geç
+      setView(ViewState.LIST);
+    }
+  }, [view, setView, setShowPresetLocations]);
+
 
   if (status === "loading") {
     return (
@@ -571,7 +585,7 @@ export default function Home() {
 
             {/* 5. List Görünümüne Geçiş Butonu */}
             <button
-                onClick={() => { setView(ViewState.LIST); setShowPresetLocations(false); }}
+                onClick={handleListViewToggle} // GÜNCELLENDİ: Yeni toggle handler kullanıldı
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
                 title="Switch to List View"
             >

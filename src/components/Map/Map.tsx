@@ -11,7 +11,7 @@ import defaultIcon from 'leaflet/dist/images/marker-icon.png';
 import defaultIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import defaultShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// Create default Leaflet icon and set it globally
+// Create default Leaflet icon
 const DefaultIcon = L.icon({
   iconUrl: defaultIcon.src,
   iconRetinaUrl: defaultIconRetina.src,
@@ -22,7 +22,8 @@ const DefaultIcon = L.icon({
   tooltipAnchor: [16, -28],
   shadowSize: [41, 41],
 });
-L.Marker.prototype.options.icon = DefaultIcon;
+// BU SATIR KALDIRILDI: L.Marker.prototype.options.icon = DefaultIcon; // Sunucu tarafı hatasına neden oluyordu.
+                                                                    // Şimdi Map komponenti içinde useEffect ile atanacak.
 
 // --- Custom Emoji Marker for Single Mood ---
 const createEmojiIcon = (emoji: string) => {
@@ -65,57 +66,41 @@ const createClusterIcon = (count: number) => {
     });
   };
 
-// --- Draggable List Component for Popup (TOUCH EVENTS Improved) ---
+// --- ClusterPopupList Component (TUT-SÜRÜKLE KAYDIRMA KALDIRILDI) ---
 const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startY, setStartY] = useState(0);
-  const [startScrollTop, setStartScrollTop] = useState(0);
+  // Sürükleme ile ilgili state'ler kaldırıldı:
+  // const [isDragging, setIsDragging] = useState(false);
+  // const [startY, setStartY] = useState(0);
+  // const [startScrollTop, setStartScrollTop] = useState(0);
 
-  const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation(); 
-    setIsDragging(true);
-    setStartY('touches' in e ? e.touches[0].clientY : e.clientY);
-    if (scrollRef.current) {
-      setStartScrollTop(scrollRef.current.scrollTop);
-    }
-  }, []);
-
-  const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    if (!isDragging || !scrollRef.current) return;
-    // touchAction: 'none' olduğu için e.preventDefault() artık daha kritik ve doğrudan çalışır
-    if ('touches' in e) { 
-      e.preventDefault(); 
-    }
-    const currentY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const walk = (currentY - startY) * 1.5;
-    scrollRef.current.scrollTop = startScrollTop - walk;
-  }, [isDragging, startY, startScrollTop]);
-
-  const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
+  // Sürükleme ile ilgili handler'lar kaldırıldı:
+  // const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, []);
+  // const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, [isDragging, startY, startScrollTop]);
+  // const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Fare tekerleğiyle kaydırmanın olay yayılımını durdur
   }, []);
 
   return (
     <div
       ref={scrollRef}
-      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-800 rounded-b-lg select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`} 
-      onMouseDown={handleStart}
-      onMouseMove={handleMove}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-      onTouchStart={handleStart}
-      onTouchMove={handleMove}
-      onTouchEnd={handleEnd}
-      onTouchCancel={handleEnd}
-      onWheel={handleWheel}
-      style={{ touchAction: 'none' }} // <<< DEĞİŞİKLİK BURADA: 'pan-y' yerine 'none'
+      // Sürükleme ile ilgili className'ler kaldırıldı:
+      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-800 rounded-b-lg select-none`} 
+      // Tüm mouse ve touch event handler'ları kaldırıldı, sadece tekerlek kaydırma kaldı:
+      // onMouseDown={handleStart}
+      // onMouseMove={handleMove}
+      // onMouseUp={handleEnd}
+      // onMouseLeave={handleEnd}
+      // onTouchStart={handleStart}
+      // onTouchMove={handleMove}
+      // onTouchEnd={handleEnd}
+      // onTouchCancel={handleEnd}
+      onWheel={handleWheel} 
+      // touchAction: 'none' yerine 'pan-y' kullanıldı. Bu, doğal dikey kaydırmaya izin verir, 
+      // ancak diğer dokunma hareketlerini (örn. harita pinch-to-zoom) etkilemez.
+      style={{ touchAction: 'pan-y' }} 
     >
         {moods.map((m) => (
             <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-700 pb-2 last:border-0 last:pb-0">
@@ -147,7 +132,7 @@ const getRandomRemoteLocation = (): LocationData => {
 };
 
 interface MapRecenterHandlerProps {
-    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null;
+    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null; // 'purpose' eklendi
     onRecenterComplete?: () => void;
 }
 
@@ -257,7 +242,8 @@ interface MapComponentProps {
   height?: string;
   moods: Mood[];
   onInitialLocationDetermined?: (locationData: LocationData | null) => void;
-  recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean } | null;
+  // GÜNCELLENDİ: recenterTrigger tipi 'purpose' alanını içeriyor
+  recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
 }
@@ -274,6 +260,17 @@ export default function Map({
   const [mapZoom, setMapZoom] = useState<number>(1);
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
   
+  // YENİ EKLENDİ: Leaflet varsayılan marker ikonunu istemci tarafında ayarlar
+  // Bu, L.Marker.prototype.options.icon = DefaultIcon; satırının sunucu tarafı derleme hatası vermesini engeller.
+  useEffect(() => {
+    // Bu kodun sadece tarayıcı ortamında çalıştığından emin oluyoruz
+    if (typeof window !== 'undefined' && L.Marker.prototype.options.icon !== DefaultIcon) {
+        L.Marker.prototype.options.icon = DefaultIcon;
+        console.log("[Map] Leaflet default marker icon set on client.");
+    }
+  }, []); // Boş bağımlılık dizisi, bileşen yüklendiğinde bir kez çalışmasını sağlar.
+
+
   const setInitialLocation = useCallback((location: LocationData) => {
     if (!hasLocationBeenSet) {
       setMapCenter(location.coords);
@@ -377,7 +374,7 @@ export default function Map({
         touchZoom={true} 
         dragging={true} 
         className="h-full w-full"
-        style={{ zIndex: 0, touchAction: 'none' }} 
+        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' burada kalacak, harita sürüklemesi için
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
