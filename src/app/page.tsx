@@ -4,6 +4,7 @@
 import { useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
+import { reverseGeocode } from '@/lib/geolocation';
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
@@ -44,14 +45,36 @@ export default function Home() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const handleInitialLocationDetermined = (locationData: LocationData | null) => {
-    setCurrentDeterminedLocationData(locationData);
-    console.log("[page.tsx] Location determined by map component:", locationData);
-    // İlk konum belirlendiğinde harita doğal olarak oraya odaklanabilir.
-    // Eğer harita başlangıçta bu konuma otomatik olarak odaklanıyorsa,
-    // setIsMapCenteredOnUserLocation(true) burada da çağrılabilir.
-    // Ancak kullanıcı akışında, butona basıldığında daha net bir kontrol sağlanabilir.
-  };
+  const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => { // <<< async ve useCallback eklendi
+      if (!locationData) {
+        setCurrentDeterminedLocationData(null);
+        console.log("[page.tsx] Location determination failed or denied.");
+        return;
+      }
+
+      console.log("[page.tsx] Location determined by map component:", locationData);
+
+      // Reverse geocoding işlemini burada yap
+      const [lat, lng] = locationData.coords;
+      let locationLabel: string | null = null;
+      try {
+        locationLabel = await reverseGeocode(lat, lng);
+        console.log("[page.tsx] Reverse geocoded location label:", locationLabel);
+      } catch (error) {
+        console.error("[page.tsx] Error during reverse geocoding:", error);
+        locationLabel = "Unknown Location (Geocoding failed)";
+      }
+
+      // Yeni locationLabel ile state'i güncelle
+      setCurrentDeterminedLocationData({
+        ...locationData,
+        locationLabel: locationLabel || "Unknown Location", // API'den gelmezse varsayılan değer
+      });
+
+      // Harita doğal olarak ilk konuma odaklanmış olacağı için bu bayrağı ayarla
+      setIsMapCenteredOnUserLocation(true);
+    }, []); // Bağımlılık dizisini boş bırakabiliriz çünkü dışarıdan bir şeye bağlı değil.
+    
 
   const handleAddMood = async () => {
     if (!currentDeterminedLocationData) {
