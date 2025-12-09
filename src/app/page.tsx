@@ -170,8 +170,8 @@ export default function Home() {
 
   }, [
     currentDeterminedLocationData, 
-    user?.fid, // Mevcut
-    user?.username, // <<< Eklendi: 'user?.username' bağımlılığı
+    user?.fid, 
+    user?.username, // 'user?.username' bağımlılığı eklendi
     defaultZoomLevel, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
@@ -299,19 +299,22 @@ export default function Home() {
 
       {/* Header / Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
-        <div className="flex flex-col items-end gap-2">
+        {/* BU BÖLÜM KULLANICI ADI VE NAVİGASYON BUTUNU İÇİN GÜNCELLENDİ */}
+        <div className="flex justify-end items-start gap-3"> {/* Elemanları sağa yaslamak için justify-end, üstte hizalamak için items-start, aralarında boşluk için gap-3 */}
+            {/* Kullanıcı adı - İlk sıraya alındı (solda olması için) */}
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
-            {/* Konum Navigasyon Butonu kullanıcı adının altına taşındı ve koşullu olarak render edildi */}
+            {/* Konum Navigasyon Butonu - Kullanıcı adının sağına taşındı ve koşullu olarak render edildi */}
             {view !== ViewState.LIST && (
                 <button
                     onClick={handleRecenterToUserLocation}
                     disabled={isRecenterButtonDisabled}
-                    className={`p-3 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
+                    className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
                         ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                     title="Recenter to your location or last mood location"
-                    style={{ marginTop: '50px' }}
+                    // Artık 'gap-3' ve 'items-start' kullanıldığı için 'marginTop'a gerek yok.
+                    // Eğer özel bir dikey offset isterseniz buraya 'mt-X' gibi bir Tailwind sınıfı ekleyebilirsiniz.
                 >
                     <MapPin size={24} />
                 </button>
@@ -336,7 +339,7 @@ export default function Home() {
         {view === ViewState.LIST && (
             <div
                 className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm"
-                onClick={() => setView(ViewState.MAP)}
+                onClick={() => setView(ViewState.MAP)} // Tüm overlay alanına tıklayınca kapanır
             >
                  <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
                     <MoodFeed
