@@ -239,7 +239,7 @@ const MapTouchFixer: React.FC = () => {
       setTimeout(() => {
         map.dragging.enable();
         console.log("[MapTouchFixer] Dragging re-enabled.");
-      }, 200);
+      }, 50);
     };
 
     map.on('zoomend', handleZoomEnd);

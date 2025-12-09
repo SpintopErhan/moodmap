@@ -7,7 +7,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { reverseGeocode, forwardGeocode } from '@/lib/geolocation';
 
 import { Button } from '@/components/ui/Button';
-import { MoodFeed } from '@/components/MoodFeed'; // MoodFeed import edildi
+import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react';
 
@@ -22,6 +22,30 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
 
 const MAX_MOOD_TEXT_LENGTH =48;
 
+// Yeni eklendi: Ön tanımlı konumlar
+interface PresetLocation {
+  id: string;
+  name: string;
+  coords: [number, number]; // [latitude, longitude]
+  zoom: number; // Bu konuma gidildiğinde haritanın zoom seviyesi
+}
+
+// GÜNCELLENDİ: Yeni şehirler ve "My Current Location" kaldırıldı
+const PRESET_LOCATIONS: PresetLocation[] = [
+  { id: 'istanbul', name: 'Istanbul', coords: [41.0082, 28.9784], zoom: 9 },
+  { id: 'berlin', name: 'Berlin', coords: [52.5200, 13.4050], zoom: 9 },
+  { id: 'paris', name: 'Paris', coords: [48.8566, 2.3522], zoom: 9 },
+  { id: 'london', name: 'London', coords: [51.5074, 0.1278], zoom: 9 },
+  { id: 'barcelona', name: 'Barcelona', coords: [41.3851, 2.1734], zoom: 9 },
+  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 9 },
+  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 9 },
+  { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 9 },
+  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 9 }, // Fas için Marrakech
+  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, // Güney Afrika için Cape Town
+  { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
+];
+
+
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp();
 
@@ -31,6 +55,9 @@ export default function Home() {
   const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
 
   const [isMapCenteredOnUserLocation, setIsMapCenteredOnUserLocation] = useState(false);
+  
+  // Yeni state: Konum listesinin görünürlüğü
+  const [showPresetLocations, setShowPresetLocations] = useState(false);
 
   const [view, setView] = useState<ViewState>(ViewState.ADD);
 
@@ -105,7 +132,6 @@ export default function Home() {
     setIsSubmitting(true);
     setCastError(null);
 
-    // user?.username buraya eklendi
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
     const currentUsername = user?.username || 'Anonymous User'; 
 
@@ -274,6 +300,43 @@ export default function Home() {
     return noLocationData || notOnMapView || isCurrentlyCentered;
   }, [userLastMoodLocation, currentDeterminedLocationData, view, isMapCenteredOnUserLocation]);
 
+  // Yeni eklendi: Harita butonuna tıklandığında ne olacağını yönetir
+  const handleMapButtonClick = useCallback(() => {
+    if (view !== ViewState.MAP) {
+      setView(ViewState.MAP);
+      // Harita görünümüne geçtikten sonra konum listesini aç
+      setTimeout(() => setShowPresetLocations(true), 0); // Küçük bir gecikme ile (veya hiç olmadan) açabiliriz
+    } else {
+      // Zaten harita görünümündeyse, listeyi açıp kapat
+      setShowPresetLocations(prev => !prev);
+    }
+  }, [view, setView, setShowPresetLocations]);
+
+  // Yeni eklendi: Preset konumlarından birine tıklandığında
+  const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
+    let targetCoords = preset.coords;
+    let targetZoom = preset.zoom;
+
+    // "My Current Location" artık listede olmadığı için bu kontrol gereksiz.
+    // Ancak gelecekte benzer bir dinamik seçenek eklenebilirse diye bırakıyorum.
+    // if (preset.id === 'user_location' && currentDeterminedLocationData) {
+    //   targetCoords = currentDeterminedLocationData.coords;
+    //   targetZoom = currentDeterminedLocationData.zoom || defaultZoomLevel;
+    // } else if (preset.id === 'user_location') {
+    //     alert("Your current location is not determined yet!");
+    //     setShowPresetLocations(false); // Listeyi kapat
+    //     return;
+    // }
+
+    setMapRecenterTrigger({
+        coords: targetCoords,
+        zoom: targetZoom,
+        animate: true, // Fly-to animasyonunu etkinleştir
+    });
+    setShowPresetLocations(false); // Listeyi kapat
+    setIsMapCenteredOnUserLocation(false); // Harita kaydırıldığı için merkezden çıkış sinyali
+  }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation, currentDeterminedLocationData, defaultZoomLevel]);
+
 
   if (status === "loading") {
     return (
@@ -297,15 +360,22 @@ export default function Home() {
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
+      {/* Full-screen backdrop for closing overlays (Presets ve diğerleri için) */}
+      {showPresetLocations && (
+        <div
+            className="absolute inset-0 z-49 pointer-events-auto" // Z index'i Bottom Nav'dan yüksek, Preset List'ten düşük
+            onClick={() => setShowPresetLocations(false)}
+        ></div>
+      )}
+
       {/* Header / Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
-        {/* BU BÖLÜM KULLANICI ADI VE NAVİGASYON BUTUNU İÇİN GÜNCELLENDİ */}
-        <div className="flex justify-end items-start gap-3"> {/* Elemanları sağa yaslamak için justify-end, üstte hizalamak için items-start, aralarında boşluk için gap-3 */}
-            {/* Kullanıcı adı - İlk sıraya alındı (solda olması için) */}
+        <div className="flex justify-end items-start gap-3">
+            {/* Kullanıcı adı kutusu */}
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
-            {/* Konum Navigasyon Butonu - Kullanıcı adının sağına taşındı ve koşullu olarak render edildi */}
+            {/* Konum Navigasyon Butonu (kullanıcı adının sağında) */}
             {view !== ViewState.LIST && (
                 <button
                     onClick={handleRecenterToUserLocation}
@@ -313,8 +383,6 @@ export default function Home() {
                     className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
                         ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                     title="Recenter to your location or last mood location"
-                    // Artık 'gap-3' ve 'items-start' kullanıldığı için 'marginTop'a gerek yok.
-                    // Eğer özel bir dikey offset isterseniz buraya 'mt-X' gibi bir Tailwind sınıfı ekleyebilirsiniz.
                 >
                     <MapPin size={24} />
                 </button>
@@ -338,7 +406,7 @@ export default function Home() {
         {/* List View Overlay */}
         {view === ViewState.LIST && (
             <div
-                className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm"
+                className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto"
                 onClick={() => setView(ViewState.MAP)} // Tüm overlay alanına tıklayınca kapanır
             >
                  <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
@@ -352,7 +420,7 @@ export default function Home() {
 
         {/* Add Mood Overlay */}
         {view === ViewState.ADD && (
-             <div className="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200">
+             <div className ="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
                  <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
 
@@ -431,16 +499,37 @@ export default function Home() {
 
       {/* --- Bottom Navigation Bar --- */}
       <div className="absolute bottom-0 left-0 right-0 z-40 p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
-        <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50">
+        <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50 pointer-events-auto">
 
-            {/* 1. Harita Görünümüne Geçiş Butonu */}
-            <button
-                onClick={() => setView(ViewState.MAP)}
-                className={`p-3 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
-                title="Switch to Map View"
-            >
-                <MapIcon size={24} />
-            </button>
+            {/* 1. Harita Görünümüne Geçiş Butonu ve Konum Listesi */}
+            <div className="relative"> {/* Konum listesini konumlandırmak için relative */}
+              <button
+                  onClick={handleMapButtonClick} // Yeni handler
+                  className={`p-1.5 rounded-full transition-all ${view === ViewState.MAP ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                  title="Switch to Map View / Open Preset Locations"
+              >
+                  <MapIcon size={24} />
+              </button>
+
+              {/* GÜNCELLENDİ: Preset Konum Listesi Overlay - Genişlik ve boşluk ayarları yapıldı */}
+              {showPresetLocations && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
+                  <ul className="text-sm text-slate-300">
+                    {PRESET_LOCATIONS.map(preset => (
+                      <li
+                        key={preset.id}
+                        className="px-4 py-2 hover:bg-slate-700/50 cursor-pointer flex items-center gap-2"
+                        onClick={(e) => { e.stopPropagation(); handlePresetLocationClick(preset); }} // Olayın dışarıya yayılmasını engeller
+                      >
+                        <MapPin size={16} /> {preset.name}
+                      </li>
+                    ))}
+                  </ul>
+                  {/* Küçük bir ok, listenin butondan geldiğini belirtmek için */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-[-8px] w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-slate-800/90"></div>
+                </div>
+              )}
+            </div>
 
             {/* 2. Konum Navigasyon Butonu - Artık yukarıda */}
 
