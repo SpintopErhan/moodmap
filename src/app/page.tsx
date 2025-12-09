@@ -105,8 +105,9 @@ export default function Home() {
     setIsSubmitting(true);
     setCastError(null);
 
+    // user?.username buraya eklendi
     const currentUserId = user?.fid ? user.fid.toString() : 'anon';
-    const currentUsername = user?.username || 'Anonymous User';
+    const currentUsername = user?.username || 'Anonymous User'; 
 
     const existingMoodIndex = moods.findIndex(mood => mood.userId === currentUserId);
 
@@ -167,8 +168,17 @@ export default function Home() {
     setStatusText('');
     setIsSubmitting(false);
 
-  }, [currentDeterminedLocationData, user?.fid, defaultZoomLevel, moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, setIsMapCenteredOnUserLocation, setView, setStatusText]);
+  }, [
+    currentDeterminedLocationData, 
+    user?.fid, // Mevcut
+    user?.username, // <<< Eklendi: 'user?.username' bağımlılığı
+    defaultZoomLevel, 
+    moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
+    setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
+    setIsMapCenteredOnUserLocation, setView, setStatusText
+  ]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleCastLastMoodToFarcaster = useCallback(async () => {
     if (!lastLocallyPostedMood) {
         setCastError("No mood found to share on Farcaster.");
@@ -294,14 +304,14 @@ export default function Home() {
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
             {/* Konum Navigasyon Butonu kullanıcı adının altına taşındı ve koşullu olarak render edildi */}
-            {view !== ViewState.LIST && ( // <<< YENİ EKLENEN KOŞUL
+            {view !== ViewState.LIST && (
                 <button
                     onClick={handleRecenterToUserLocation}
                     disabled={isRecenterButtonDisabled}
                     className={`p-3 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
                         ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                     title="Recenter to your location or last mood location"
-                    style={{ marginTop: '50px' }} // Bu değeri istediğin gibi ayarlayabilirsin
+                    style={{ marginTop: '50px' }}
                 >
                     <MapPin size={24} />
                 </button>
@@ -326,7 +336,7 @@ export default function Home() {
         {view === ViewState.LIST && (
             <div
                 className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm"
-                onClick={() => setView(ViewState.MAP)} // Tüm overlay alanına tıklayınca kapanır
+                onClick={() => setView(ViewState.MAP)}
             >
                  <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
                     <MoodFeed
