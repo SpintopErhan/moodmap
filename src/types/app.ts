@@ -108,8 +108,13 @@ export const MOCK_MOODS: Mood[] = [
   { id: 'k3', emoji: '🍕', text: 'Late night pizza', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 30000, userId: 'u12', username: 'Can' },
   { id: 'k4', emoji: '😽', text: 'Feeding stray cats', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 40000, userId: 'u13', username: 'Zeynep' },
   { id: 'k5', emoji: '🚢', text: 'Ferry ride', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 50000, userId: 'u14', username: 'Deniz' },
-
-  // Other locations
+  // YENİ EKLENEN KADIKÖY MOOD'LARI (5 adet)
+  { id: 'k6', emoji: '📚', text: 'Okuma keyfi Moda Sahili\'nde', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 60000, userId: 'u15', username: 'Okursever' },
+  { id: 'k7', emoji: '☕', text: 'Sabah kahvesi Kadıköyde', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 70000, userId: 'u16', username: 'Kahveci' },
+  { id: 'k8', emoji: '🌈', text: 'Renkli sokaklar Moda', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 80000, userId: 'u17', username: 'Gezgin' },
+  { id: 'k9', emoji: '🎉', text: 'Kadıköyde parti zamanı', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 90000, userId: 'u18', username: 'Eğlenceci' },
+  { id: 'k10', emoji: '🤔', text: 'Derin düşünceler içindeyim', location: { lat: 40.9901, lng: 29.0292 }, locationLabel: 'Kadıköy, İstanbul, Turkey', timestamp: Date.now() - 100000, userId: 'u19', username: 'Filozof' },
+  // Diğer lokasyonlar
   { id: '1', emoji: '🔥', text: 'Coding marathon!', location: { lat: 41.0082, lng: 28.9784 }, locationLabel: 'Fatih, Istanbul, Turkey', timestamp: Date.now() - 100000, userId: 'u1', username: 'Erhan' },
   { id: '2', emoji: '☕', text: 'Need more coffee...', location: { lat: 41.0122, lng: 28.9854 }, locationLabel: 'Beyoğlu, Istanbul, Turkey', timestamp: Date.now() - 500000, userId: 'u2', username: 'Dev_Jane' },
 ];

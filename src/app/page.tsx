@@ -570,7 +570,7 @@ export default function Home() {
             <div 
                 // top-20 ve h-[calc(100%-5rem)] ile konumu ayarlandı
                 // backdrop-blur-xl kaldırıldı, bg-transparent zaten şeffaf
-                className={`absolute top-28 right-0 h-[calc(100%-5rem)] w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}
+                className={`absolute top-24 right-0 h-[calc(100%-5rem)] w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}
                 onClick={handleCloseAllPanels} 
             >
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
