@@ -8,15 +8,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react'; // X ikonu eklendi
-
-// ÖNEMLİ: types/app.ts dosyanızda ViewState enum'ına aşağıdaki değeri eklemelisiniz:
-// export enum ViewState {
-//   MAP = 'map',
-//   ADD = 'add',
-//   LIST = 'list',
-//   CLUSTER_LIST = 'cluster_list', // <-- BU SATIRI EKLEYİN
-// }
+import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react';
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -61,7 +53,7 @@ export default function Home() {
     coords: [number, number], 
     zoom: number, 
     animate: boolean,
-    purpose: 'userLocation' | 'presetLocation' // Amacı belirtir
+    purpose: 'userLocation' | 'presetLocation' 
   } | null>(null);
   const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
 
@@ -77,7 +69,6 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [castError, setCastError] = useState<string | null>(null);
 
-  // YENİ STATE: Tıklanan küme mood'larını tutar
   const [selectedClusterMoods, setSelectedClusterMoods] = useState<Mood[] | null>(null); 
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -222,7 +213,7 @@ export default function Home() {
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         animate: false,
-        purpose: 'userLocation', // Mood eklendikten sonra kullanıcının konumuna gitmek sayılıyor
+        purpose: 'userLocation', 
     });
 
     setLastLocallyPostedMood(moodToPost);
@@ -296,41 +287,30 @@ export default function Home() {
     scrollContainerRef.current.scrollLeft = scrollLeft - walk;
   }, [isDragging, startX, scrollLeft]);
 
-  // GÜNCELLENDİ: handleMapRecenterComplete mantığı
   const handleMapRecenterComplete = useCallback(() => {
-    // Sadece tetikleyici mevcutsa ve amacı 'userLocation' ise true yap
     if (mapRecenterTrigger?.purpose === 'userLocation') {
       setIsMapCenteredOnUserLocation(true); 
     } else {
-      setIsMapCenteredOnUserLocation(false); // Diğer durumlarda (presetler vb.) false yap
+      setIsMapCenteredOnUserLocation(false); 
     }
-    setMapRecenterTrigger(null); // Her zaman trigger'ı temizle
+    setMapRecenterTrigger(null); 
     console.log("[page.tsx] Map recentering complete, trigger reset and map centered status updated.");
-  }, [setMapRecenterTrigger, setIsMapCenteredOnUserLocation, mapRecenterTrigger]); // mapRecenterTrigger bağımlılıklara eklendi
+  }, [setMapRecenterTrigger, setIsMapCenteredOnUserLocation, mapRecenterTrigger]); 
 
   const handleMapUserMove = useCallback(() => {
-    // Kullanıcı haritayı hareket ettirirse merkezden çıktık
     setIsMapCenteredOnUserLocation(false); 
-    // Eğer küme listesi açıksa, kullanıcı haritayı hareket ettirdiğinde onu kapatabiliriz.
-    // Veya açık kalmasını isteyebiliriz, bu bir tasarım kararı. Şimdilik kapatmayalım.
-    // if (view === ViewState.CLUSTER_LIST) {
-    //   setView(ViewState.MAP);
-    //   setSelectedClusterMoods(null);
-    // }
     console.log("[page.tsx] Map moved by user, recenter status reset.");
   }, [setIsMapCenteredOnUserLocation]);
 
   const triggerRecenter = useCallback(() => {
     const targetLocationData = userLastMoodLocation || currentDeterminedLocationData;
     if (targetLocationData) {
-        // GÜNCELLENDİ: 'purpose' eklendi
         setMapRecenterTrigger({
             coords: targetLocationData.coords,
             zoom: targetLocationData.zoom || defaultZoomLevel,
             animate: true,
-            purpose: 'userLocation', // Recenter butonu her zaman userLocation hedefler
+            purpose: 'userLocation', 
         });
-        // Recenter başladığında henüz merkezlenmedik, bu yüzden false
         setIsMapCenteredOnUserLocation(false); 
     } else {
         alert("Location information is not yet determined.");
@@ -340,7 +320,6 @@ export default function Home() {
   const handleRecenterToUserLocation = useCallback(() => {
     if (view !== ViewState.MAP) {
         setView(ViewState.MAP);
-        // Küme listesi açıksa kapat
         setSelectedClusterMoods(null); 
         setTimeout(() => {
             triggerRecenter();
@@ -352,13 +331,12 @@ export default function Home() {
 
   const isRecenterButtonDisabled = useMemo(() => {
     const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
-    const notOnMapView = view !== ViewState.MAP && view !== ViewState.CLUSTER_LIST; // CLUSTER_LIST de harita ile ilgili
+    const notOnMapView = view !== ViewState.MAP && view !== ViewState.CLUSTER_LIST; 
     const isCurrentlyCentered = isMapCenteredOnUserLocation; 
     return noLocationData || notOnMapView || isCurrentlyCentered;
   }, [userLastMoodLocation, currentDeterminedLocationData, view, isMapCenteredOnUserLocation]);
 
   const handleMapButtonClick = useCallback(() => {
-    // Küme listesi açıksa kapat
     setSelectedClusterMoods(null); 
 
     if (view !== ViewState.MAP) {
@@ -381,14 +359,12 @@ export default function Home() {
     });
     setShowPresetLocations(false);
     setIsMapCenteredOnUserLocation(false); 
-    // Preset seçildiğinde küme listesini de kapat
     setSelectedClusterMoods(null);
   }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation, setSelectedClusterMoods]);
 
-  // GÜNCELLENDİ: List View toggle handler
   const handleListViewToggle = useCallback(() => {
     setShowPresetLocations(false); 
-    setSelectedClusterMoods(null); // Küme listesini kapat
+    setSelectedClusterMoods(null); 
 
     if (view === ViewState.LIST) {
       setView(ViewState.MAP);
@@ -397,15 +373,13 @@ export default function Home() {
     }
   }, [view, setView, setShowPresetLocations, setSelectedClusterMoods]);
 
-  // YENİ HANDLER: Küme markerına tıklandığında çalışacak fonksiyon
   const handleClusterMarkerClick = useCallback((moodsInCluster: Mood[]) => {
-    setSelectedClusterMoods(moodsInCluster); // Tıklanan kümedeki mood'ları kaydet
-    setView(ViewState.CLUSTER_LIST); // Yeni yan liste görünümüne geç
-    setShowPresetLocations(false); // Açık preset listesi varsa kapat
+    setSelectedClusterMoods(moodsInCluster); 
+    setView(ViewState.CLUSTER_LIST); 
+    setShowPresetLocations(false); 
     console.log("[page.tsx] Cluster clicked, showing moods:", moodsInCluster);
   }, [setSelectedClusterMoods, setView, setShowPresetLocations]);
 
-  // Yan listeyi kapatmak için
   const handleCloseClusterList = useCallback(() => {
     setView(ViewState.MAP);
     setSelectedClusterMoods(null);
@@ -434,7 +408,7 @@ export default function Home() {
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
       {/* Full-screen backdrop for closing overlays (Presets ve diğerleri için) */}
-      {(showPresetLocations || view === ViewState.CLUSTER_LIST) && ( // CLUSTER_LIST için de backdrop eklendi
+      {(showPresetLocations || view === ViewState.CLUSTER_LIST) && ( 
         <div
             className="absolute inset-0 z-49 pointer-events-auto"
             onClick={view === ViewState.CLUSTER_LIST ? handleCloseClusterList : () => setShowPresetLocations(false)}
@@ -449,7 +423,7 @@ export default function Home() {
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
             {/* Konum Navigasyon Butonu (kullanıcı adının sağında) */}
-            {(view === ViewState.MAP || view === ViewState.CLUSTER_LIST) && ( // CLUSTER_LIST görünümünde de buton gösterilir
+            {(view === ViewState.MAP || view === ViewState.CLUSTER_LIST) && ( 
                 <button
                     onClick={handleRecenterToUserLocation}
                     disabled={isRecenterButtonDisabled}
@@ -473,7 +447,7 @@ export default function Home() {
                 recenterTrigger={mapRecenterTrigger}
                 onRecenterComplete={handleMapRecenterComplete}
                 onMapMove={handleMapUserMove}
-                onClusterClick={handleClusterMarkerClick} /* YENİ: Küme tıklama handler'ı geçirildi */
+                onClusterClick={handleClusterMarkerClick} 
             />
         </div>
 
@@ -494,7 +468,7 @@ export default function Home() {
 
         {/* Add Mood Overlay */}
         {view === ViewState.ADD && (
-             <div className ="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
+             <div className="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
                  <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
 
@@ -572,10 +546,10 @@ export default function Home() {
 
         {/* YENİ: Küme Listesi Yan Paneli */}
         {view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-20 pb-20"> {/* GÜNCELLENDİ: w-full yerine w-[240px] */}
+            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-20 pb-20"> 
                 <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0">
-                    <h3 className="text-xl font-bold text-purple-300">
-                        {/* BURASI GÜNCELLENDİ: Küme konumunu göster */}
+                    {/* GÜNCELLENDİ: text-xl -> text-base ve truncate eklendi */}
+                    <h3 className="text-base font-bold text-purple-300 truncate md:text-lg"> 
                         {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                     </h3>
                     <button
@@ -632,7 +606,7 @@ export default function Home() {
 
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
-                onClick={() => { setView(ViewState.ADD); setShowPresetLocations(false); setSelectedClusterMoods(null); }} /* ADD'e geçerken küme listesini kapat */
+                onClick={() => { setView(ViewState.ADD); setShowPresetLocations(false); setSelectedClusterMoods(null); }} 
                 className="bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900"
             >
                 <Plus size={28} strokeWidth={3} />
