@@ -4,7 +4,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import * as L from 'leaflet';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Mood, LocationData } from '@/types/app'; // LocationData must contain locationType
+import { Mood, LocationData } from '@/types/app';
 
 // Import Leaflet icon files directly
 import defaultIcon from 'leaflet/dist/images/marker-icon.png';
@@ -22,22 +22,20 @@ const DefaultIcon = L.icon({
   tooltipAnchor: [16, -28],
   shadowSize: [41, 41],
 });
-// BU SATIR KALDIRILDI: L.Marker.prototype.options.icon = DefaultIcon; // Sunucu tarafı hatasına neden oluyordu.
-                                                                    // Şimdi Map komponenti içinde useEffect ile atanacak.
 
 // --- Custom Emoji Marker for Single Mood ---
 const createEmojiIcon = (emoji: string) => {
   return L.divIcon({
     className: 'custom-emoji-marker',
     html: `<div class="
-      bg-slate-800/95 
-      border-2 border-purple-600 
-      rounded-full 
-      w-10 h-10 
-      flex items-center justify-center 
-      text-2xl 
-      shadow-md 
-      transition-transform 
+      bg-slate-800/95
+      border-2 border-purple-600
+      rounded-full
+      w-10 h-10
+      flex items-center justify-center
+      text-2xl
+      shadow-md
+      transition-transform
       hover:scale-110
     ">${emoji}</div>`,
     iconSize: [40, 40],
@@ -46,32 +44,23 @@ const createEmojiIcon = (emoji: string) => {
   });
 };
 
-// --- Custom Cluster Marker for Multiple Moods (GÜNCELLEME İLE ALAKALI DEĞİL, SADECE DİĞER İŞLEVLER İÇİN BURADA) ---
+// --- Custom Cluster Marker for Multiple Moods ---
 const createClusterIcon = (emojis: string[]) => {
-    const displayedEmojis = emojis.slice(0, 3); // İlk 3 emojiyi al
+    const displayedEmojis = emojis.slice(0, 3);
     
     let stackedEmojisHtml = '';
 
-    // Emojilerin temel stilini ve dikey ortalama ayarını tanımlıyoruz
-    // text-lg: emoji boyutu (Yaklaşık 18px). text-xl (20px) yerine daha iyi sığması için düşürüldü.
     const baseInnerEmojiStyle = `
-        absolute 
-        top-1/2 -translate-y-1/2 
-        text-lg 
-        pointer-events-none 
+        absolute
+        top-1/2 -translate-y-1/2
+        text-lg
+        pointer-events-none
     `; 
 
-    // Emojilerin birbirine göre ne kadar kaydırılacağını belirleyen değişken (piksel cinsinden)
-    // Bu değeri değiştirerek kartlar arası mesafeyi ayarlayabilirsin.
-    const offsetIncrement = 6; // Her emojinin sağa doğru kayma miktarı (6px, 8px deneyebilirsin)
+    const offsetIncrement = 6;
+    const initialLeftMargin = 0;
 
-    // İlk emojinin marker çerçevesine olan uzaklığı (sol taraftan boşluk)
-    // Bu değeri değiştirerek tüm emoji grubunun başlangıç noktasını ayarlayabilirsin.
-    const initialLeftMargin = 0; // Daha küçük bir değer, ilk emojiyi sola yaklaştırır (2px, 0px, 4px deneyebilirsin)
-
-    // Emoji sayısına göre ofsetleri ve rotasyonları belirliyoruz
     if (displayedEmojis.length === 1) {
-        // Tek emoji varsa tamamen ortala
         stackedEmojisHtml = `
             <span class="${baseInnerEmojiStyle}" style="left: 50%; transform: translate(-50%, -50%); z-index: 3;">
                 ${displayedEmojis[0]}
@@ -103,27 +92,20 @@ const createClusterIcon = (emojis: string[]) => {
     return L.divIcon({
       className: 'custom-cluster-marker',
       html: `<div class="
-        bg-slate-800/95 
-        border-2 border-purple-600 
-        rounded-full 
-        w-10 h-10 
-        relative /* İçindeki elemanlar için konumlandırma referansı */
-        overflow-hidden /* Kenarların dışına çıkan emojileri kırp */
-        shadow-md /* Tekil emoji ile aynı gölge */
+        bg-slate-800/95
+        border-2 border-purple-600
+        rounded-full
+        w-10 h-10
+        relative
+        overflow-hidden
+        shadow-md
       ">${stackedEmojisHtml}</div>`,
-      iconSize: [40, 40], // Tekil emoji ile aynı boyut
-      iconAnchor: [20, 20], // Ortalanmış ikon çapası
-      popupAnchor: [0, -25] // Tekil emoji ile aynı popup çapası
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -25]
     });
   };
 
-// --- ClusterPopupList Component KALDIRILDI ---
-// Bu bileşen artık doğrudan Map.tsx içinde kullanılmayacak.
-// Bu içeriği ebeveyn bileşeninde (page.tsx) oluşturulacak yeni yan liste bileşeninde kullanabiliriz.
-// Aşağıdaki ClusterPopupList tanımı silindi.
-
-
-// REMOTE_LOCATIONS updated: locationType added to each
 const REMOTE_LOCATIONS: LocationData[] = [
   { name: "Sahara Desert", coords: [23.4514, 15.5369], zoom: 5, popupText: "Location permission denied: Sahara Desert", locationType: 'fallback' },
   { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
@@ -137,7 +119,7 @@ const getRandomRemoteLocation = (): LocationData => {
 };
 
 interface MapRecenterHandlerProps {
-    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null; // 'purpose' eklendi
+    recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
     onRecenterComplete?: () => void;
 }
 
@@ -202,19 +184,32 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
 }
 
 interface MapUserInteractionWatcherProps {
-  onMapMove: () => void;
+  onMapMove?: () => void; // onMapMove prop'unu isteğe bağlı yaptık
+  onMapClick?: () => void; // <<< YENİ: Harita tıklama olayını yakalamak için prop eklendi
 }
 
-const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ onMapMove }) => {
+const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ onMapMove, onMapClick }) => {
   useMapEvents({
     dragstart: () => {
       console.log("[MapUserInteractionWatcher] User started dragging map.");
-      onMapMove();
+      onMapMove?.();
     },
     zoomstart: () => {
       console.log("[MapUserInteractionWatcher] User started zooming map.");
-      onMapMove();
+      onMapMove?.();
     },
+    click: (event) => { // <<< YENİ: Harita tıklama olayı dinleyicisi
+      console.log("[MapUserInteractionWatcher] Map clicked.", event);
+      // Eğer tıklanan nokta bir marker veya popup değilse onMapClick'i tetikle
+      // Bu, `e.originalEvent`'in bir element üzerinde mi tıklandığını kontrol eder.
+      // Leaflet kendi marker ve popup click event'lerini zaten yönetir,
+      // bu yüzden sadece haritanın boş alanına tıklanıldığında bu event'i tetiklemek isteriz.
+      // Leaflet click olayının target'ı genellikle haritanın kendisi olur.
+      // Ancak emin olmak için basit bir kontrol yapabiliriz.
+      // Eğer bir marker veya pop-up'a tıklanırsa, `onClick` handler'ları onu işleyecektir.
+      // Buradaki `onMapClick` sadece "genel harita tıklamaları" içindir.
+      onMapClick?.();
+    }
   });
   return null;
 };
@@ -247,12 +242,11 @@ interface MapComponentProps {
   height?: string;
   moods: Mood[];
   onInitialLocationDetermined?: (locationData: LocationData | null) => void;
-  // GÜNCELLENDİ: recenterTrigger tipi 'purpose' alanını içeriyor
   recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
-  // YENİ PROP EKLENDİ: Küme markerına tıklanma durumunda çağrılacak callback
-  onClusterClick?: (moods: Mood[]) => void; 
+  onClusterClick?: (moods: Mood[]) => void;
+  onMapClick?: () => void; // <<< YENİ: Bu satırı MapComponentProps interface'ine ekledik
 }
 
 export default function Map({
@@ -262,22 +256,19 @@ export default function Map({
   recenterTrigger,
   onRecenterComplete,
   onMapMove,
-  onClusterClick, // Yeni prop'u burada destructre ediyoruz
+  onClusterClick,
+  onMapClick, // <<< Yeni prop'u burada da destructre ediyoruz
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
   
-  // YENİ EKLENDİ: Leaflet varsayılan marker ikonunu istemci tarafında ayarlar
-  // Bu, L.Marker.prototype.options.icon = DefaultIcon; satırının sunucu tarafı derleme hatası vermesini engeller.
   useEffect(() => {
-    // Bu kodun sadece tarayıcı ortamında çalıştığından emin oluyoruz
     if (typeof window !== 'undefined' && L.Marker.prototype.options.icon !== DefaultIcon) {
         L.Marker.prototype.options.icon = DefaultIcon;
         console.log("[Map] Leaflet default marker icon set on client.");
     }
-  }, []); // Boş bağımlılık dizisi, bileşen yüklendiğinde bir kez çalışmasını sağlar.
-
+  }, []);
 
   const setInitialLocation = useCallback((location: LocationData) => {
     if (!hasLocationBeenSet) {
@@ -382,7 +373,7 @@ export default function Map({
         touchZoom={true} 
         dragging={true} 
         className="h-full w-full"
-        style={{ zIndex: 0, touchAction: 'none' }} // touchAction: 'none' burada kalacak, harita sürüklemesi için
+        style={{ zIndex: 0, touchAction: 'none' }}
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
@@ -401,14 +392,10 @@ export default function Map({
                     key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
                     icon={isCluster ? createClusterIcon(group.map(m => m.emoji)) : createEmojiIcon(mainMood.emoji)}
-                    // GÜNCELLEME: Küme markerına tıklama olayı eklendi, Popup kaldırıldı
                     eventHandlers={isCluster ? {
-                        // Bir küme markerına tıklandığında, onClusterClick prop'unu çağırıyoruz
-                        // ve bu kümeye ait tüm mood'ları iletiyoruz.
                         click: () => onClusterClick?.(group) 
                     } : undefined}
                 >
-                    {/* Sadece tekil mood'lar için Popup render ediyoruz */}
                     {!isCluster && (
                         <Popup className="dark-theme-popup" minWidth={220} maxWidth={280}>
                             <div className="text-center min-w-[150px] bg-slate-800 p-4 rounded-lg"> 
@@ -423,13 +410,13 @@ export default function Map({
                             </div>
                         </Popup>
                     )}
-                    {/* Kümelenmiş mood'lar artık onClusterClick'i tetikleyecek, ebeveyn bileşen bunu işleyecek */}
                 </Marker>
             );
         })}
         
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
-        {onMapMove && <MapUserInteractionWatcher onMapMove={onMapMove} />}
+        {/* onMapClick prop'unu MapUserInteractionWatcher'a iletiyoruz */}
+        {(onMapMove || onMapClick) && <MapUserInteractionWatcher onMapMove={onMapMove} onMapClick={onMapClick} />} 
         <MapTouchFixer />
         
       </MapContainer>

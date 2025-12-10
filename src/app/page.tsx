@@ -8,8 +8,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-// X ikonu artık yan panelde kullanılmadığı için import listesinden kaldırıldı
-import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
+import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react'; 
 
 // ÖNEMLİ: types/app.ts dosyanızda ViewState enum'ına aşağıdaki değeri eklemelisiniz:
 // export enum ViewState {
@@ -28,7 +27,7 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ),
 });
 
-const MAX_MOOD_TEXT_LENGTH =48;
+const MAX_MOOD_TEXT_LENGTH = 48;
 
 interface PresetLocation {
   id: string;
@@ -105,6 +104,19 @@ export default function Home() {
       });
     }
   }, []);
+
+  // Tüm açık panelleri ve ilgili state'leri sıfırlayan merkezi fonksiyon
+  const handleCloseAllPanels = useCallback(() => {
+    setView(ViewState.MAP); // Her zaman harita görünümüne dön
+    setSelectedClusterMoods(null); // Küme listesini kapat
+    setShowPresetLocations(false); // Ön tanımlı konumlar menüsünü kapat
+    setSelectedEmoji(MOOD_OPTIONS[0].emoji); // Seçili emojiyi varsayılana sıfırla
+    setStatusText(''); // Mood metnini temizle
+    setIsSubmitting(false); // Gönderim durumunu sıfırla
+    setCastError(null); // Hata mesajını temizle
+    console.log("[page.tsx] All panels closed and states reset to map view.");
+  }, [setView, setSelectedClusterMoods, setShowPresetLocations, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError]);
+
 
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
       if (!geolocationFunctions) {
@@ -217,7 +229,6 @@ export default function Home() {
         zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
         popupText: moodToPost.text || moodToPost.emoji,
     });
-    // GÜNCELLENDİ: 'purpose' eklendi
     setMapRecenterTrigger({
         coords: [moodToPost.location.lat, moodToPost.location.lng],
         zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
@@ -227,13 +238,9 @@ export default function Home() {
 
     setLastLocallyPostedMood(moodToPost);
 
-    // Mood ekledikten sonra kullanıcının konumuna merkezlendiği için true
     setIsMapCenteredOnUserLocation(true); 
 
-    setView(ViewState.MAP);
-    setStatusText('');
-    setIsSubmitting(false);
-
+    handleCloseAllPanels(); // Mood eklendikten sonra tüm panelleri kapat
   }, [
     currentDeterminedLocationData, 
     user?.fid, 
@@ -241,7 +248,7 @@ export default function Home() {
     defaultZoomLevel, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
-    setIsMapCenteredOnUserLocation, setView, setStatusText
+    setIsMapCenteredOnUserLocation, handleCloseAllPanels 
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -327,33 +334,32 @@ export default function Home() {
   }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
 
   const handleRecenterToUserLocation = useCallback(() => {
-    if (view !== ViewState.MAP) {
-        setView(ViewState.MAP);
-        setSelectedClusterMoods(null); 
-        setTimeout(() => {
-            triggerRecenter();
-        }, 300);
-    } else {
+    // Tüm panelleri kapatıp haritaya dön, sonra yeniden merkezle
+    handleCloseAllPanels(); 
+    // Panellerin kapanma animasyonu için kısa bir gecikme ekleyebiliriz
+    setTimeout(() => {
         triggerRecenter();
-    }
-  }, [view, triggerRecenter, setSelectedClusterMoods]);
+    }, 300);
+  }, [triggerRecenter, handleCloseAllPanels]); 
 
   const isRecenterButtonDisabled = useMemo(() => {
     const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
-    const notOnMapView = view !== ViewState.MAP && view !== ViewState.CLUSTER_LIST; 
     const isCurrentlyCentered = isMapCenteredOnUserLocation; 
-    return noLocationData || notOnMapView || isCurrentlyCentered;
-  }, [userLastMoodLocation, currentDeterminedLocationData, view, isMapCenteredOnUserLocation]);
+    return noLocationData || isCurrentlyCentered; // Sadece harita görünümünde olmaya gerek yok, her zaman yeniden merkezleyebiliriz.
+  }, [userLastMoodLocation, currentDeterminedLocationData, isMapCenteredOnUserLocation]);
 
+  // PROBLEM BURADAYDI: handleMapButtonClick logic'ini düzelttik
   const handleMapButtonClick = useCallback(() => {
-    setSelectedClusterMoods(null); 
-    if (view !== ViewState.MAP) {
+    // Eğer ADD, LIST veya CLUSTER_LIST görünümündeysek, önce harita görünümüne geç ve presetleri aç.
+    if (view === ViewState.ADD || view === ViewState.LIST || view === ViewState.CLUSTER_LIST) {
       setView(ViewState.MAP);
-      setTimeout(() => setShowPresetLocations(true), 0);
-    } else {
+      setShowPresetLocations(true); // Presetleri aç
+    } else { // Zaten MAP görünümündeysek, presetleri toggle et.
       setShowPresetLocations(prev => !prev);
     }
+    setSelectedClusterMoods(null); // Küme listesini her zaman kapat
   }, [view, setView, setShowPresetLocations, setSelectedClusterMoods]);
+
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
     const targetCoords = preset.coords; 
@@ -365,21 +371,22 @@ export default function Home() {
         animate: true,
         purpose: 'presetLocation', 
     });
-    setShowPresetLocations(false);
-    setIsMapCenteredOnUserLocation(false); 
-    setSelectedClusterMoods(null);
-  }, [setMapRecenterTrigger, setShowPresetLocations, setIsMapCenteredOnUserLocation, setSelectedClusterMoods]);
+    handleCloseAllPanels(); // Ön tanımlı konum seçildiğinde tüm panelleri kapat
+  }, [setMapRecenterTrigger, handleCloseAllPanels]); 
 
+  // PROBLEM BURADAYDI: handleListViewToggle logic'ini düzelttik
   const handleListViewToggle = useCallback(() => {
+    // Diğer tüm panelleri ve presetleri kapat
     setShowPresetLocations(false); 
     setSelectedClusterMoods(null); 
 
     if (view === ViewState.LIST) {
-      setView(ViewState.MAP);
+      setView(ViewState.MAP); // Eğer zaten list görünümündeysek haritaya dön
     } else {
-      setView(ViewState.LIST);
+      setView(ViewState.LIST); // Değilsek list görünümüne geç
     }
   }, [view, setView, setShowPresetLocations, setSelectedClusterMoods]);
+
 
   const handleClusterMarkerClick = useCallback((moodsInCluster: Mood[]) => {
     setSelectedClusterMoods(moodsInCluster); 
@@ -388,10 +395,6 @@ export default function Home() {
     console.log("[page.tsx] Cluster clicked, showing moods:", moodsInCluster);
   }, [setSelectedClusterMoods, setView, setShowPresetLocations]);
 
-  const handleCloseClusterList = useCallback(() => {
-    setView(ViewState.MAP);
-    setSelectedClusterMoods(null);
-  }, [setView, setSelectedClusterMoods]);
 
   if (status === "loading") {
     return (
@@ -415,33 +418,33 @@ export default function Home() {
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
-      {/* Full-screen backdrop for closing overlays (Presets ve diğerleri için) */}
-      {(showPresetLocations || view === ViewState.CLUSTER_LIST) && ( 
+      {/* Full-screen backdrop for closing only Preset Locations (Diğer paneller onMapClick ile kapanır) */}
+      {/* Z-index'i preset menüsünün altında, alt navigasyonun üzerinde olacak şekilde güncelledik */}
+      {showPresetLocations && (
         <div
-            className="absolute inset-0 z-49 pointer-events-auto"
-            onClick={view === ViewState.CLUSTER_LIST ? handleCloseClusterList : () => setShowPresetLocations(false)}
+          className="absolute inset-0 z-[50] pointer-events-auto" 
+          onClick={() => setShowPresetLocations(false)} // Sadece preset menüsünü kapatır
         ></div>
       )}
 
-      {/* Header / Top Bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 pointer-events-none">
+      {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
+      <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
         <div className="flex justify-end items-start gap-3">
             {/* Kullanıcı adı kutusu */}
             <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
                 <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
             </div>
             {/* Konum Navigasyon Butonu (kullanıcı adının sağında) */}
-            {(view === ViewState.MAP || view === ViewState.CLUSTER_LIST) && ( 
-                <button
-                    onClick={handleRecenterToUserLocation}
-                    disabled={isRecenterButtonDisabled}
-                    className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
-                        ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                    title="Recenter to your location or last mood location"
-                >
-                    <MapPin size={24} />
-                </button>
-            )}
+            {/* Bu buton her zaman görünür olmalı ve basıldığında handleRecenterToUserLocation çağırmalı */}
+            <button
+                onClick={handleRecenterToUserLocation}
+                disabled={isRecenterButtonDisabled}
+                className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
+                    ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                title="Recenter to your location or last mood location"
+            >
+                <MapPin size={24} />
+            </button>
         </div>
       </div>
 
@@ -455,29 +458,39 @@ export default function Home() {
                 recenterTrigger={mapRecenterTrigger}
                 onRecenterComplete={handleMapRecenterComplete}
                 onMapMove={handleMapUserMove}
-                onClusterClick={handleClusterMarkerClick} 
+                onClusterClick={handleClusterMarkerClick}
+                onMapClick={handleCloseAllPanels} // <<< Harita tıklamalarında tüm panelleri kapatır
             />
         </div>
 
-        {/* List View Overlay */}
+        {/* List View Overlay (Z-index güncellendi) */}
         {view === ViewState.LIST && (
             <div
-                className="absolute inset-0 z-30 pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto"
-                onClick={() => setView(ViewState.MAP)} 
+                className="absolute inset-0 z-[55] pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto"
+                onClick={handleCloseAllPanels} // <<< Harita dışına tıklanıldığında tüm panelleri kapat
             >
-                 <div className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+                 <div
+                    className="h-full overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300"
+                    onClick={(e) => e.stopPropagation()} // MoodFeed'in kendi tıklamalarının kapanma olayını tetiklemesini engelle
+                 >
                     <MoodFeed
                         moods={moods}
-                        onCloseRequest={() => setView(ViewState.MAP)}
+                        onCloseRequest={handleCloseAllPanels} // <<< Kapatma isteği geldiğinde tüm panelleri kapat
                     />
                  </div>
             </div>
         )}
 
-        {/* Add Mood Overlay */}
+        {/* Add Mood Overlay (Z-index güncellendi) */}
         {view === ViewState.ADD && (
-             <div className ="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
-                 <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
+             <div 
+                 className ="absolute inset-0 z-[55] bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto"
+                 onClick={handleCloseAllPanels} // Clicks outside the actual form close it
+             >
+                 <div 
+                    className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6"
+                    onClick={(e) => e.stopPropagation()} // Clicks on the form itself don't close it
+                 >
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
 
                     <div className="min-h-[24px] flex items-center justify-center mt-2">
@@ -540,7 +553,7 @@ export default function Home() {
                         </div>
 
                         <div className="flex gap-3">
-                            <Button variant="secondary" className="flex-1" onClick={() => setView(ViewState.MAP)} disabled={isSubmitting}>
+                            <Button variant="secondary" className="flex-1" onClick={handleCloseAllPanels} disabled={isSubmitting}>
                                 Cancel
                             </Button>
                             <Button className="flex-1" onClick={handleAddMood} isLoading={isSubmitting} disabled={!currentDeterminedLocationData}>
@@ -552,18 +565,18 @@ export default function Home() {
              </div>
         )}
 
-        {/* YENİ: Küme Listesi Yan Paneli */}
+        {/* YENİ: Küme Listesi Yan Paneli (Z-index güncellendi) */}
         {view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-transparent backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-24 pb-32">
+            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-24 pb-32">
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
-                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-lg"> 
+                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-md"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
                 {/* MoodFeed bileşenini yeniden kullanıyoruz */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                     <MoodFeed
                         moods={selectedClusterMoods}
-                        onCloseRequest={handleCloseClusterList} 
+                        onCloseRequest={handleCloseAllPanels} 
                         hideHeader={true} 
                     />
                 </div>
@@ -571,14 +584,14 @@ export default function Home() {
         )}
       </div>
 
-      {/* --- Bottom Navigation Bar --- */}
-      <div className="absolute bottom-0 left-0 right-0 z-40 p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
+      {/* --- Bottom Navigation Bar --- (Z-index güncellendi) */}
+      <div className="absolute bottom-0 left-0 right-0 z-[50] p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
         <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50 pointer-events-auto">
 
             {/* 1. Harita Görünümüne Geçiş Butonu ve Konum Listesi */}
             <div className="relative">
               <button
-                  onClick={handleMapButtonClick}
+                  onClick={handleMapButtonClick} // <<< Düzeltildi
                   className={`p-1.5 rounded-full transition-all ${view === ViewState.MAP || view === ViewState.CLUSTER_LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
                   title="Switch to Map View / Open Preset Locations"
               >
@@ -586,7 +599,7 @@ export default function Home() {
               </button>
 
               {showPresetLocations && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-50 pointer-events-auto">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-[51] pointer-events-auto"> {/* Z-index güncellendi */}
                   <ul className="text-sm text-slate-300">
                     {PRESET_LOCATIONS.map(preset => (
                       <li
@@ -605,7 +618,11 @@ export default function Home() {
 
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
-                onClick={() => { setView(ViewState.ADD); setShowPresetLocations(false); setSelectedClusterMoods(null); }} 
+                onClick={() => { // <<< Düzeltildi
+                    setView(ViewState.ADD); 
+                    setShowPresetLocations(false); 
+                    setSelectedClusterMoods(null); 
+                }}
                 className="bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900"
             >
                 <Plus size={28} strokeWidth={3} />
@@ -613,7 +630,7 @@ export default function Home() {
 
             {/* 5. List Görünümüne Geçiş Butonu */}
             <button
-                onClick={handleListViewToggle} 
+                onClick={handleListViewToggle} // <<< Düzeltildi
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
                 title="Switch to List View"
             >
