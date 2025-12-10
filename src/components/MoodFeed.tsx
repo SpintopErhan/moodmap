@@ -1,16 +1,16 @@
 // src/components/MoodFeed.tsx
 import React, { useRef, useCallback } from 'react';
 import { Mood } from '@/types/app';
-// Clock ve MapPin ikonları artık JSX içinde kullanılmadığı için import listesinden kaldırıldı
-import { X } from 'lucide-react'; 
+import { X, MapPin } from 'lucide-react'; 
 
 interface MoodFeedProps {
   moods: Mood[];
   onCloseRequest?: () => void;
   hideHeader?: boolean;
+  hideLocationDetails?: boolean; // <<< BURASI ÇOK ÖNEMLİ: Bu satırın MoodFeedProps içinde olduğundan emin olun!
 }
 
-export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideHeader }) => {
+export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideHeader, hideLocationDetails }) => { // <<< hideLocationDetails buraya eklendi
   const scrollRef = useRef<HTMLDivElement>(null);
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.stopPropagation();
@@ -57,12 +57,19 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
                   <span className="font-semibold text-slate-200 truncate text-sm">{mood.username}</span> 
-                  {/* SAAT BELİRTECİ KALDIRILDI */}
+                  {/* SAAT BELİRTECİ (timestamp) isterseniz buraya eklenebilir */}
+                  {/* Örneğin: <span className="text-xs text-slate-500 ml-2">{new Date(mood.timestamp).toLocaleTimeString()}</span> */}
                 </div>
                 {mood.text && (
                   <p className="text-slate-300 text-xs mt-0.5 break-words">{mood.text}</p>
                 )}
-                {/* LOKASYON BİLGİSİ KALDIRILDI */}
+                {/* Konum bilgisi, hideLocationDetails prop'u true DEĞİLSE ve konum etiketi varsa gösterilir */}
+                {!hideLocationDetails && mood.locationLabel && ( 
+                  <div className="flex items-center gap-1 text-slate-400 text-xs mt-1">
+                    <MapPin size={12} className="shrink-0" /> {/* Konum ikonu */}
+                    <span className="truncate">{mood.locationLabel}</span> {/* Konum bilgisi */}
+                  </div>
+                )}
               </div>
             </div>
           ))}

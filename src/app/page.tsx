@@ -8,15 +8,15 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-// X ikonu MoodFeed içinde kullanıldığı için page.tsx'ten kaldırıldı
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
 
-// ÖNEMLİ: types/app.ts dosyanızda ViewState enum'ına aşağıdaki değeri eklemelisiniz:
+// Önemli Not: ViewState enum'ına 'CLUSTER_LIST' değerini daha önce 'src/types/app.ts' dosyanızda eklemiş olmalısınız.
+// Eğer eklemediyseniz, lütfen aşağıdaki gibi ekleyin:
 // export enum ViewState {
 //   MAP = 'map',
 //   ADD = 'add',
 //   LIST = 'list',
-//   CLUSTER_LIST = 'cluster_list', // <-- BU SATIRI EKLEYİN
+//   CLUSTER_LIST = 'cluster_list',
 // }
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
@@ -87,11 +87,13 @@ export default function Home() {
 
   const defaultZoomLevel = useMemo(() => 14, []);
 
+  // Geolocation fonksiyonlarını dinamik olarak yüklemek için state
   const [geolocationFunctions, setGeolocationFunctions] = useState<{
     reverseGeocode: (lat: number, lng: number) => Promise<string | null>;
     forwardGeocode: (address: string) => Promise<[number, number] | null>;
   } | null>(null);
 
+  // Geolocation modülünü sadece istemci tarafında yüklüyoruz
   useEffect(() => {
     if (typeof window !== 'undefined') {
       import('@/lib/geolocation').then(mod => {
@@ -143,35 +145,41 @@ export default function Home() {
 
       const [preciseLat, preciseLng] = locationData.coords;
       let finalLocationLabel: string = "Unknown Location";
-      let geocodedCoords: [number, number] = locationData.coords;
+      let geocodedCoords: [number, number] = [preciseLat, preciseLng]; // Başlangıçta hassas koordinatları kullan
 
       if (locationData.locationType === 'user') {
         try {
+          // Hassas koordinatlardan okunabilir bir adres etiketi al
           const geocodedResult = await geolocationFunctions.reverseGeocode(preciseLat, preciseLng);
           if (geocodedResult) {
             finalLocationLabel = geocodedResult;
+            // Etiketi tekrar koordinata çevirerek daha soyut bir konum merkezi bul
             const forwardGeocodedResult = await geolocationFunctions.forwardGeocode(geocodedResult);
             if (forwardGeocodedResult) {
-              geocodedCoords = forwardGeocodedResult;
+              geocodedCoords = forwardGeocodedResult; // Soyutlanmış koordinatları kullan
             } else {
-              console.warn("[page.tsx] Forward geocoding failed for user location, using precise coords.");
+              console.warn("[page.tsx] Forward geocoding failed for user location label, falling back to precise coordinates.");
+              // geocodedCoords zaten preciseLat, preciseLng olarak başlatıldı, bu durumda değişmez
             }
           } else {
-            console.warn("[page.tsx] Reverse geocoding returned no label for user location, using 'Unknown Location'.");
+            console.warn("[page.tsx] Reverse geocoding returned no label for user location, using 'Unknown Location'. Falling back to precise coordinates.");
+            // finalLocationLabel "Unknown Location" kalır, geocodedCoords precise kalır
           }
         } catch (error) {
           console.error("[page.tsx] Error during geocoding process for user location:", error);
+          // Hata durumunda finalLocationLabel "Unknown Location" kalır, geocodedCoords precise kalır
         }
       } else {
+        // Önceden tanımlanmış veya fallback konumlar için
         finalLocationLabel = locationData.name || "Unknown Location";
-        geocodedCoords = locationData.coords;
+        geocodedCoords = locationData.coords; // Önceden tanımlanmış koordinatları kullan
       }
 
       setCurrentDeterminedLocationData({
-        coords: geocodedCoords,
+        coords: geocodedCoords, // Soyutlanmış veya hassas koordinatlar
         timestamp: locationData.timestamp,
         accuracy: locationData.accuracy,
-        locationLabel: finalLocationLabel,
+        locationLabel: finalLocationLabel, // Soyutlanmış adres etiketi
         zoom: locationData.zoom ?? defaultZoomLevel,
         locationType: locationData.locationType,
       });
@@ -423,8 +431,8 @@ export default function Home() {
       {/* Full-screen backdrop for closing only Preset Locations (Diğer paneller onMapClick ile kapanır) */}
       {showPresetLocations && (
         <div
-          className="absolute inset-0 z-[50] pointer-events-auto" // Backdrop z-index'i eski halinde
-          onClick={() => setShowPresetLocations(false)} // Sadece preset menüsünü kapatır
+          className="absolute inset-0 z-[50] pointer-events-auto" 
+          onClick={() => setShowPresetLocations(false)} 
         ></div>
       )}
 
@@ -459,7 +467,7 @@ export default function Home() {
                 onRecenterComplete={handleMapRecenterComplete}
                 onMapMove={handleMapUserMove}
                 onClusterClick={handleClusterMarkerClick}
-                onMapClick={handleCloseAllPanels} // <<< Harita tıklamalarında tüm panelleri kapatır
+                onMapClick={handleCloseAllPanels} 
             />
         </div>
 
@@ -481,7 +489,33 @@ export default function Home() {
             </div>
         )}
 
-        {/* Add Mood Overlay */}
+         {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve kaydırma aktif edildi) */}
+        { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
+            <div 
+                // top-24 ve bottom-24 ile dikey konum ve yükseklik ayarlandı.
+                // flex flex-col eklendi.
+                className={`absolute top-24 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
+                onClick={handleCloseAllPanels} 
+            >
+                {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
+                {/* shrink-0 sayesinde başlık sabit yüksekliğini koruyacak */}
+                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-sm"> 
+                    {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
+                </h3>
+                {/* MoodFeed bileşenini yeniden kullanıyoruz */}
+                {/* flex-1 ile kalan alanı dolduracak, overflow-y-auto ile kaydırılabilir olacak */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4" onClick={(e) => e.stopPropagation()}>
+                    <MoodFeed
+                        moods={selectedClusterMoods}
+                        onCloseRequest={handleCloseAllPanels} 
+                        hideHeader={true} 
+                        hideLocationDetails={true} 
+                    />
+                </div>
+            </div>
+        )}
+
+        {/* Add Mood Overlay (Mood girişi burası) */}
         { view === ViewState.ADD && (
              <div 
                  className={`absolute inset-0 z-[55] bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl pointer-events-auto animate-in zoom-in-95 duration-200`}
@@ -564,32 +598,7 @@ export default function Home() {
                  </div>
              </div>
         )}
-
-        {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve kaydırma aktif edildi) */}
-        { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div 
-                // top-24 ve bottom-24 ile dikey konum ve yükseklik ayarlandı.
-                // flex flex-col eklendi.
-                className={`absolute top-24 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
-                onClick={handleCloseAllPanels} 
-            >
-                {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
-                {/* shrink-0 sayesinde başlık sabit yüksekliğini koruyacak */}
-                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-sm"> 
-                    {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
-                </h3>
-                {/* MoodFeed bileşenini yeniden kullanıyoruz */}
-                {/* flex-1 ile kalan alanı dolduracak, overflow-y-auto ile kaydırılabilir olacak */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4" onClick={(e) => e.stopPropagation()}>
-                    <MoodFeed
-                        moods={selectedClusterMoods}
-                        onCloseRequest={handleCloseAllPanels} 
-                        hideHeader={true} 
-                    />
-                </div>
-            </div>
-        )}
-      </div>
+      </div> 
 
       {/* --- Bottom Navigation Bar --- */}
       <div className="absolute bottom-0 left-0 right-0 z-[50] p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
