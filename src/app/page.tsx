@@ -572,8 +572,8 @@ export default function Home() {
 
         {/* YENİ: Küme Listesi Yan Paneli */}
         {view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div className="absolute top-0 right-0 h-full w-full sm:w-80 md:w-96 z-50 bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-20 pb-20"> {/* Adjusted: added pt-20 pb-20 */}
-                <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0"> {/* Adjusted: added shrink-0 */}
+            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-20 pb-20"> {/* GÜNCELLENDİ: w-full yerine w-[240px] */}
+                <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0">
                     <h3 className="text-xl font-bold text-purple-300">
                         {/* BURASI GÜNCELLENDİ: Küme konumunu göster */}
                         {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
