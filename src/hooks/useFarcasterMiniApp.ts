@@ -1,3 +1,5 @@
+//src\hooks\useFarcasterMiniApp.ts
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -14,23 +16,23 @@ interface UseFarcasterMiniAppResult {
   sdkActions: typeof sdk.actions | null;
 }
 
+// addMiniApp çağrısının başarısız olduğunu gösteren tipik TypeError mesajını sabit olarak tanımlayalım
+const ADD_MINI_APP_FAILURE_TYPE_ERROR = "Cannot read properties of undefined (reading 'result')";
+
 export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
   const [user, setUser] = useState<FarcasterUser>(ANONYMOUS_USER);
   const [status, setStatus] = useState<FarcasterSDKStatus>("idle");
   const [error, setError] = useState<Error | null>(null);
 
-  // SDK başlatma işleminin sadece bir kez yapılmasını sağlamak için useRef kullanıldı
   const hasInitializedSDKRef = useRef(false);
 
   useEffect(() => {
     const init = async () => {
-      // Eğer SDK zaten başlatılmaya çalışıldıysa, tekrar çalıştırma
       if (hasInitializedSDKRef.current) {
         console.log("[FarcasterSDK] init atlandı: Zaten başlatma denenmiş.");
         return;
       }
 
-      // SDK objesi henüz tanımlı değilse
       if (!sdk) {
         const sdkError = new Error("Farcaster SDK bulunamadı veya yüklenemedi.");
         setError(sdkError);
@@ -39,12 +41,11 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         return;
       }
 
-      // Başlatma işlemini işaretle
       hasInitializedSDKRef.current = true;
       setStatus("loading");
-      setError(null); // Önceki hataları temizle
+      setError(null);
 
-      let contextFetched = false; // context'in başarılı şekilde alınıp alınmadığını takip edelim
+      let contextFetched = false;
 
       try {
         console.log("[FarcasterSDK] Başlatılıyor: sdk.actions.ready() bekleniyor...");
@@ -55,21 +56,22 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
           console.log("[FarcasterSDK] Başlatılıyor: sdk.actions.addMiniApp() bekleniyor...");
           await sdk.actions.addMiniApp();
           console.log("[FarcasterSDK] Başarılı: sdk.actions.addMiniApp() tamamlandı.");
-          // Eğer burası başarılı olursa, muhtemelen bir Farcaster client içindeyiz.
-        } catch (addMiniAppErr: unknown) { // 'any' -> 'unknown' olarak değiştirildi
-          // `TypeError: Cannot read properties of undefined (reading 'result')` hatasını özel olarak ele al
-          // Bu hata genellikle bir Farcaster client'ı içinde olmadığımızda ortaya çıkar.
-          if (addMiniAppErr instanceof TypeError && addMiniAppErr.message?.includes("result")) {
+        } catch (addMiniAppErr: unknown) {
+          // Eğer hata spesifik bir TypeError ise (Farcaster client dışında çalışıyor veya kullanıcı reddetti)
+          if (addMiniAppErr instanceof TypeError && addMiniAppErr.message?.includes(ADD_MINI_APP_FAILURE_TYPE_ERROR)) {
             console.warn(
-              "[FarcasterSDK] Uyarı: `addMiniApp` çağrısı başarısız oldu (muhtemelen Farcaster client dışında çalışıyor). Uygulama devam edecek.",
+              "[FarcasterSDK] Uyarı: `addMiniApp` çağrısı başarısız oldu (Farcaster client dışında çalışıyor veya kullanıcı reddetti). Anonim olarak devam ediliyor.",
               addMiniAppErr.message
             );
-            // Bu spesifik hatayı kritik olarak işaretlemiyoruz, ancak genel bir hata log'u tutabiliriz.
-            // setError(addMiniAppErr); // Eğer UI'da bu spesifik uyarıyı göstermek istersen bu satırı açabilirsin.
+            // BU HATA KRİTİK DEĞİL. UYGULAMANIN DEVAM ETMESİNE İZİN VER.
+            // Bu uyarıyı UI'da göstermek istemediğimiz sürece setError çağırmayız.
           } else {
-            // Farklı veya daha kritik bir hata ise, başlatma sürecini durdur.
-            console.error("[FarcasterSDK] Kritik hata: `addMiniApp` bilinmeyen bir nedenle başarısız oldu.", addMiniAppErr);
-            throw addMiniAppErr; // Dış catch bloğuna atarız.
+            // Farklı veya daha kritik bir hata ise, bunu ele alalım ve belki de başlatma sürecini durduralım.
+            // Ancak şu anki senaryoda, biz sadece 'addMiniApp' hatalarının genel akışı bozmasını istemiyoruz.
+            // Bu bloğu değiştirmiyoruz, ama eğer bilinmeyen bir hata olursa, yine de bir uyarı log'u düşmek iyi.
+            console.warn("[FarcasterSDK] Uyarı: `addMiniApp` bilinmeyen bir nedenle başarısız oldu. Uygulama devam edecek.", addMiniAppErr);
+            // Burada da `throw addMiniAppErr;` yapmıyoruz.
+            // Böylece ana try-catch bloğuna düşmüyoruz ve status "error" olmuyor.
           }
         }
 
@@ -77,7 +79,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         console.log("[FarcasterSDK] Bağlam yükleniyor: sdk.context bekleniyor...");
         const context: FarcasterSDKContext | undefined = await sdk.context;
         console.log("[FarcasterSDK] Bağlam yüklendi:", context);
-        contextFetched = true; // Context başarılı bir şekilde alındı.
+        contextFetched = true;
 
         if (context?.user?.fid) {
           setUser({
@@ -87,21 +89,23 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
           });
           console.log("[FarcasterSDK] Kullanıcı bilgisi başarıyla alındı:", context.user.username);
         } else {
-          console.warn("[FarcasterSDK] Uyarı: Kullanıcı bilgisi alınamadı veya kullanıcı izin vermedi. Varsayılan kullanıcı kullanılıyor.");
-          setUser(ANONYMOUS_USER);
+          console.warn("[FarcasterSDK] Uyarı: Kullanıcı bilgisi alınamadı veya kullanıcı izin vermedi. Varsayılan kullanıcı (anonim) kullanılıyor.");
+          setUser(ANONYMOUS_USER); // Anonim kullanıcı olarak ayarla
         }
-        setStatus("loaded");
+        
+        setStatus("loaded"); // Her durumda SDK'nın "loaded" olduğunu işaretle
         console.log("[FarcasterSDK] SDK başlatma işlemi tamamlandı. Durum: loaded.");
-      } catch (err: unknown) { // Buradaki 'err' tipi de 'unknown' olarak değiştirildi, iyi bir pratik.
+
+      } catch (err: unknown) {
+        // Bu catch bloğu sadece `sdk.actions.ready()` veya `sdk.context` gibi
+        // gerçekten kritik olan SDK bileşenlerinde oluşan hataları yakalamalı.
+        // `addMiniApp` hataları artık buraya düşmeyecek.
         console.error("[FarcasterSDK] Kritik başlatma hatası oluştu:", err);
-        // Hata objesini doğru bir şekilde loglamak için:
         console.error("[FarcasterSDK] Tam hata objesi:", err instanceof Error ? err.message : String(err));
         setError(err instanceof Error ? err : new Error(String(err)));
         setStatus("error");
         console.log("[FarcasterSDK] SDK başlatma işlemi başarısız oldu. Durum: error.");
 
-        // Eğer context hiç alınamadıysa, kullanıcıyı yine de ANONİM olarak ayarla,
-        // böylece UI'da boş bir kullanıcı objesi yerine varsayılan bir kullanıcı gösterilir.
         if (!contextFetched) {
           setUser(ANONYMOUS_USER);
         }
@@ -109,7 +113,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
     };
 
     init();
-  }, []); // Boş bağımlılık dizisi, hook'un sadece mount olduğunda çalışmasını sağlar.
+  }, []);
 
   const composeCast = useCallback(
     async (text: string, rawEmbeds: string[] = []) => {
@@ -118,7 +122,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         console.warn("[FarcasterSDK] Cast hatası: SDK yüklü değil.", castError.message);
         throw castError;
       }
-      if (!user.fid || user.fid === 0) { // Anonim kullanıcı cast yapamaz
+      if (user.fid === ANONYMOUS_USER.fid) { // ANONYMOUS_USER.fid doğrudan kontrol edildi
         const authError = new Error("Cast oluşturmak için bir Farcaster kullanıcısı olarak oturum açmış olmalısınız.");
         console.warn("[FarcasterSDK] Cast hatası: Oturum açılmamış.");
         throw authError;
@@ -141,12 +145,12 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         console.log("[FarcasterSDK] Cast oluşturuluyor:", { text, embeds: embedsForSDK });
         await sdk.actions.composeCast({ text, embeds: embedsForSDK });
         console.log("[FarcasterSDK] Cast başarıyla oluşturuldu.");
-      } catch (err: unknown) { // Buradaki 'err' tipi de 'unknown' olarak değiştirildi
+      } catch (err: unknown) {
         console.error("[FarcasterSDK] Cast oluşturulurken hata:", err);
         throw err instanceof Error ? err : new Error(String(err));
       }
     },
-    [status, user.fid] // user.fid eklendi, çünkü cast yapabilmek için kullanıcı bilgisi önemli.
+    [status, user.fid]
   );
 
   const memoizedSdkActions = useMemo(() => (status === "loaded" ? sdk.actions : null), [status]);
