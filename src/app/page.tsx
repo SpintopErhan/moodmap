@@ -8,7 +8,7 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react';
+import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react'; // X ikonu hala başka yerlerde kullanıldığı için kalabilir.
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -468,7 +468,7 @@ export default function Home() {
 
         {/* Add Mood Overlay */}
         {view === ViewState.ADD && (
-             <div className="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
+             <div className ="absolute inset-0 z-30 bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl animate-in zoom-in-95 duration-200 pointer-events-auto">
                  <div className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6">
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
 
@@ -546,10 +546,14 @@ export default function Home() {
 
         {/* YENİ: Küme Listesi Yan Paneli */}
         {view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-20 pb-20"> 
-                <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0">
-                    {/* GÜNCELLENDİ: text-xl -> text-base ve truncate eklendi */}
-                    <h3 className="text-base font-bold text-purple-300 truncate md:text-lg"> 
+            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-transparent backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-24 pb-32"> {/* GÜNCELLENDİ: pt-24}
+                {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
+                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-0 shrink-0 md:text-lg"> {/* GÜNCELLENDİ: text-center ve padding eklendi */}
+                    {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
+                </h3>
+                {/* Eski başlık div'i ve kapatma butonu kaldırıldı */}
+                {/* <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0">
+                    <h3 className="text-base font-bold text-purple-300 truncate md:text-lg">
                         {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                     </h3>
                     <button
@@ -559,7 +563,7 @@ export default function Home() {
                     >
                         <X size={24} />
                     </button>
-                </div>
+                </div> */}
                 {/* MoodFeed bileşenini yeniden kullanıyoruz */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                     <MoodFeed
