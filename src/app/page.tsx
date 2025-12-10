@@ -423,7 +423,7 @@ export default function Home() {
       {/* Full-screen backdrop for closing only Preset Locations (Diğer paneller onMapClick ile kapanır) */}
       {showPresetLocations && (
         <div
-          className="absolute inset-0 z-[50] pointer-events-auto" 
+          className="absolute inset-0 z-[50] pointer-events-auto" // Backdrop z-index'i eski halinde
           onClick={() => setShowPresetLocations(false)} // Sadece preset menüsünü kapatır
         ></div>
       )}
@@ -565,10 +565,12 @@ export default function Home() {
              </div>
         )}
 
-        {/* YENİ: Küme Listesi Yan Paneli */}
+        {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve arka plan şeffaf yapıldı) */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
-                className={`absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent backdrop-blur-xl pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}
+                // top-20 ve h-[calc(100%-5rem)] ile konumu ayarlandı
+                // backdrop-blur-xl kaldırıldı, bg-transparent zaten şeffaf
+                className={`absolute top-28 right-0 h-[calc(100%-5rem)] w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}
                 onClick={handleCloseAllPanels} 
             >
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
@@ -601,6 +603,7 @@ export default function Home() {
                   <MapIcon size={24} />
               </button>
 
+              {/* Preset Locations Menu - Burası harita butonuyla ilişkili, orijinal konumunda kaldı */}
               {showPresetLocations && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-[51] pointer-events-auto"> 
                   <ul className="text-sm text-slate-300">
@@ -622,12 +625,12 @@ export default function Home() {
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
                 onClick={() => { 
-                    if (view !== ViewState.MAP) {
-                      handleCloseAllPanels(); 
+                    if (view !== ViewState.MAP) { // Eğer harita görünümünde değilsek
+                      handleCloseAllPanels(); // Açık olan diğer panelleri kapat
                     }
-                    setView(ViewState.ADD); 
-                    setShowPresetLocations(false); 
-                    setSelectedClusterMoods(null); 
+                    setView(ViewState.ADD); // Add Mood görünümüne geç
+                    setShowPresetLocations(false); // Presetleri kapat
+                    setSelectedClusterMoods(null); // Küme listesini kapat
                 }}
                 className={`bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
             >
