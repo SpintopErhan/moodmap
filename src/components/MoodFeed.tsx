@@ -1,7 +1,8 @@
 // src/components/MoodFeed.tsx
 import React, { useRef, useCallback } from 'react';
 import { Mood } from '@/types/app';
-import { Clock, MapPin, X } from 'lucide-react'; // X ikonu import ediliyor, Clock ve MapPin artık kullanılmıyor olabilir.
+// Clock ve MapPin ikonları artık JSX içinde kullanılmadığı için import listesinden kaldırıldı
+import { X } from 'lucide-react'; 
 
 interface MoodFeedProps {
   moods: Mood[];
