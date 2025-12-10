@@ -46,7 +46,7 @@ const createEmojiIcon = (emoji: string) => {
   });
 };
 
-// --- Custom Cluster Marker for Multiple Moods (GÜNCELLENMİŞ HALİ) ---
+// --- Custom Cluster Marker for Multiple Moods (GÜNCELLEME İLE ALAKALI DEĞİL, SADECE DİĞER İŞLEVLER İÇİN BURADA) ---
 const createClusterIcon = (emojis: string[]) => {
     const displayedEmojis = emojis.slice(0, 3); // İlk 3 emojiyi al
     
@@ -57,7 +57,7 @@ const createClusterIcon = (emojis: string[]) => {
     const baseInnerEmojiStyle = `
         absolute 
         top-1/2 -translate-y-1/2 
-        text-2xl 
+        text-lg 
         pointer-events-none 
     `; 
 
@@ -67,7 +67,7 @@ const createClusterIcon = (emojis: string[]) => {
 
     // İlk emojinin marker çerçevesine olan uzaklığı (sol taraftan boşluk)
     // Bu değeri değiştirerek tüm emoji grubunun başlangıç noktasını ayarlayabilirsin.
-    const initialLeftMargin = -4; // Daha küçük bir değer, ilk emojiyi sola yaklaştırır (2px, 0px, 4px deneyebilirsin)
+    const initialLeftMargin = 0; // Daha küçük bir değer, ilk emojiyi sola yaklaştırır (2px, 0px, 4px deneyebilirsin)
 
     // Emoji sayısına göre ofsetleri ve rotasyonları belirliyoruz
     if (displayedEmojis.length === 1) {
@@ -117,36 +117,11 @@ const createClusterIcon = (emojis: string[]) => {
     });
   };
 
-// --- ClusterPopupList Component (TUT-SÜRÜKLE KAYDIRMA KALDIRILDI) ---
-const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+// --- ClusterPopupList Component KALDIRILDI ---
+// Bu bileşen artık doğrudan Map.tsx içinde kullanılmayacak.
+// Bu içeriği ebeveyn bileşeninde (page.tsx) oluşturulacak yeni yan liste bileşeninde kullanabiliriz.
+// Aşağıdaki ClusterPopupList tanımı silindi.
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation(); // Fare tekerleğiyle kaydırmanın olay yayılımını durdur
-  }, []);
-
-  return (
-    <div
-      ref={scrollRef}
-      className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-800 rounded-b-lg select-none`} 
-      onWheel={handleWheel} 
-      style={{ touchAction: 'pan-y' }} 
-    >
-        {moods.map((m) => (
-            <div key={m.id} className="flex items-start gap-2 mb-2 last:mb-0 border-b border-slate-700 pb-2 last:border-0 last:pb-0">
-                <div className="text-2xl shrink-0">{m.emoji}</div>
-                <div>
-                    <div className="text-xs font-bold text-white">{m.username}</div>
-                    {m.text && <div className="text-xs text-gray-300 italic break-words">&quot;{m.text}&quot;</div>}
-                    <div className="text-[9px] text-gray-400 mt-0.5">
-                        {new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </div>
-                </div>
-            </div>
-        ))}
-    </div>
-  );
-};
 
 // REMOTE_LOCATIONS updated: locationType added to each
 const REMOTE_LOCATIONS: LocationData[] = [
@@ -276,6 +251,8 @@ interface MapComponentProps {
   recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
+  // YENİ PROP EKLENDİ: Küme markerına tıklanma durumunda çağrılacak callback
+  onClusterClick?: (moods: Mood[]) => void; 
 }
 
 export default function Map({
@@ -285,6 +262,7 @@ export default function Map({
   recenterTrigger,
   onRecenterComplete,
   onMapMove,
+  onClusterClick, // Yeni prop'u burada destructre ediyoruz
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -422,18 +400,17 @@ export default function Map({
                 <Marker
                     key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
-                    // BURASI GÜNCELLENDİ: createClusterIcon artık emoji dizisi alıyor
                     icon={isCluster ? createClusterIcon(group.map(m => m.emoji)) : createEmojiIcon(mainMood.emoji)}
+                    // GÜNCELLEME: Küme markerına tıklama olayı eklendi, Popup kaldırıldı
+                    eventHandlers={isCluster ? {
+                        // Bir küme markerına tıklandığında, onClusterClick prop'unu çağırıyoruz
+                        // ve bu kümeye ait tüm mood'ları iletiyoruz.
+                        click: () => onClusterClick?.(group) 
+                    } : undefined}
                 >
-                    <Popup className="dark-theme-popup" minWidth={220} maxWidth={280}>
-                        {isCluster ? (
-                            <div className="min-w-[200px] max-w-[260px]">
-                                <div className="bg-slate-700 text-purple-300 text-xs font-bold px-3 py-2 rounded-t-lg text-center">
-                                    {mainMood.locationLabel || "This Area"} ({group.length})
-                                </div>
-                                <ClusterPopupList moods={group} />
-                            </div>
-                        ) : (
+                    {/* Sadece tekil mood'lar için Popup render ediyoruz */}
+                    {!isCluster && (
+                        <Popup className="dark-theme-popup" minWidth={220} maxWidth={280}>
                             <div className="text-center min-w-[150px] bg-slate-800 p-4 rounded-lg"> 
                                 <div className="text-3xl mb-2">{mainMood.emoji}</div>
                                 <div className="font-bold text-white text-sm">{mainMood.username}</div>
@@ -444,8 +421,9 @@ export default function Map({
                                     {mainMood.locationLabel || new Date(mainMood.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                 </div>
                             </div>
-                        )}
-                    </Popup>
+                        </Popup>
+                    )}
+                    {/* Kümelenmiş mood'lar artık onClusterClick'i tetikleyecek, ebeveyn bileşen bunu işleyecek */}
                 </Marker>
             );
         })}

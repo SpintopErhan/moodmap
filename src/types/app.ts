@@ -21,13 +21,15 @@ export interface LocationData {
   popupText?: string;
 
   // Yeni eklenen alan: Konumun türünü belirtir
-  locationType?: 'user' | 'fallback'; // <<< BU SATIR EKLENDİ
+  // 'preset' tipi eklendi.
+  locationType?: 'user' | 'fallback' | 'preset'; 
 }
 
 export interface Mood {
   id: string;
   emoji: string;
-  text: string;
+  // 'text' alanı isteğe bağlı yapıldı.
+  text?: string; 
   location: Location;
   locationLabel?: string; // e.g. "Karasu, Sakarya, Turkey"
   timestamp: number;
@@ -36,12 +38,20 @@ export interface Mood {
 }
 
 export enum ViewState {
-  MAP = 'MAP',
-  LIST = 'LIST',
-  ADD = 'ADD'
+  MAP = 'map', // Küçük harfe çevrildi
+  LIST = 'list', // Küçük harfe çevrildi
+  ADD = 'add', // Küçük harfe çevrildi
+  CLUSTER_LIST = 'cluster_list', // <<< BU SATIR EKLENDİ
 }
 
-export const MOOD_OPTIONS = [
+// Mood seçeneklerini daha genel bir tip olarak tanımlayalım,
+// MoodFeed içinde kullanılıyor ve label'ı da içeriyor.
+export interface MoodOption {
+  emoji: string;
+  label: string;
+}
+
+export const MOOD_OPTIONS: MoodOption[] = [
   // Status / Vibe
   { emoji: '🔥', label: 'Lit' },
   { emoji: '✨', label: 'Sparkle' },

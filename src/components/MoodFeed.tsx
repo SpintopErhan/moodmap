@@ -1,36 +1,56 @@
 // src/components/MoodFeed.tsx
-import React from 'react';
+import React, { useRef, useCallback } from 'react'; // useRef ve useCallback hook'ları eklendi
 import { Mood } from '@/types/app';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, X } from 'lucide-react'; // X ikonu eklendi
 
 interface MoodFeedProps {
   moods: Mood[];
-  onCloseRequest?: () => void; // Yeni eklendi: Liste kapanma isteğini bildirmek için
+  onCloseRequest?: () => void;
+  hideHeader?: boolean; // <<< BU SATIR EKLENDİ: hideHeader prop'u eklendi
 }
 
-export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest }) => { // onCloseRequest eklendi
-  return (
-    <div className="h-full w-full bg-slate-900/90 backdrop-blur-md rounded-t-3xl p-4 flex flex-col border-t border-slate-700 shadow-2xl">
-      {/* Mevcut çizgi div'ine onClick eklendi */}
-      <div 
-        className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6 shrink-0 cursor-pointer" // cursor-pointer eklendi
-        onClick={onCloseRequest} // <<< Buraya onClick eklendi
-      />
-      
-      <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-        Recent Vibes
-        <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
-          {moods.length}
-        </span>
-      </h2>
+export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideHeader }) => { // hideHeader buraya eklendi
+  // Scrollbar yönetimi için gerekli hook'lar
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation(); // Fare tekerleğiyle kaydırmanın olay yayılımını durdur
+  }, []);
 
-      <div className="overflow-y-auto custom-scrollbar flex-1 pr-2 space-y-3">
-        {moods.length === 0 ? (
-          <div className="text-center text-slate-500 py-10">
-            No vibes yet. Be the first!
-          </div>
-        ) : (
-          moods.map((mood) => (
+  return (
+    <div className="relative bg-slate-800 rounded-lg shadow-xl h-full flex flex-col overflow-hidden">
+      {/* Sadece hideHeader false ise veya tanımlı değilse başlığı göster */}
+      {!hideHeader && ( // hideHeader prop'una göre başlık gösterimi
+        <div className="flex justify-between items-center p-4 border-b border-slate-700">
+          <h2 className="text-xl font-bold text-purple-300">
+            Recent Vibes
+            <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
+                {moods.length}
+            </span>
+          </h2>
+          {onCloseRequest && (
+            <button
+              onClick={onCloseRequest}
+              className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+              title="Close list"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {moods.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-gray-400">
+          <p>No vibes yet. Be the first!</p>
+        </div>
+      ) : (
+        <div 
+          ref={scrollRef} // scrollRef eklendi
+          className="overflow-y-auto custom-scrollbar flex-1 p-4 space-y-3" // pr-2 yerine p-4 ve space-y-3
+          onWheel={handleWheel} // onWheel eklendi
+          style={{ touchAction: 'pan-y' }} // touchAction eklendi
+        >
+          {moods.map((mood) => (
             <div key={mood.id} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 flex items-start gap-3">
               <div className="text-3xl bg-slate-700/30 w-12 h-12 flex items-center justify-center rounded-full shrink-0">
                 {mood.emoji}
@@ -54,9 +74,9 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest }) => 
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
