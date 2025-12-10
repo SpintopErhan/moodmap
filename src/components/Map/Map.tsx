@@ -46,38 +46,80 @@ const createEmojiIcon = (emoji: string) => {
   });
 };
 
-// --- Custom Cluster Marker for Multiple Moods ---
-const createClusterIcon = (count: number) => {
+// --- Custom Cluster Marker for Multiple Moods (GÜNCELLENMİŞ HALİ) ---
+const createClusterIcon = (emojis: string[]) => {
+    const displayedEmojis = emojis.slice(0, 3); // İlk 3 emojiyi al
+    
+    let stackedEmojisHtml = '';
+
+    // Emojilerin temel stilini ve dikey ortalama ayarını tanımlıyoruz
+    // text-lg: emoji boyutu (Yaklaşık 18px). text-xl (20px) yerine daha iyi sığması için düşürüldü.
+    const baseInnerEmojiStyle = `
+        absolute 
+        top-1/2 -translate-y-1/2 
+        text-2xl 
+        pointer-events-none 
+    `; 
+
+    // Emojilerin birbirine göre ne kadar kaydırılacağını belirleyen değişken (piksel cinsinden)
+    // Bu değeri değiştirerek kartlar arası mesafeyi ayarlayabilirsin.
+    const offsetIncrement = 6; // Her emojinin sağa doğru kayma miktarı (6px, 8px deneyebilirsin)
+
+    // İlk emojinin marker çerçevesine olan uzaklığı (sol taraftan boşluk)
+    // Bu değeri değiştirerek tüm emoji grubunun başlangıç noktasını ayarlayabilirsin.
+    const initialLeftMargin = -4; // Daha küçük bir değer, ilk emojiyi sola yaklaştırır (2px, 0px, 4px deneyebilirsin)
+
+    // Emoji sayısına göre ofsetleri ve rotasyonları belirliyoruz
+    if (displayedEmojis.length === 1) {
+        // Tek emoji varsa tamamen ortala
+        stackedEmojisHtml = `
+            <span class="${baseInnerEmojiStyle}" style="left: 50%; transform: translate(-50%, -50%); z-index: 3;">
+                ${displayedEmojis[0]}
+            </span>
+        `;
+    } else if (displayedEmojis.length === 2) {
+        stackedEmojisHtml = `
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin}px; transform: translateY(-50%) rotate(-7deg); z-index: 2;">
+                ${displayedEmojis[0]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + offsetIncrement}px; transform: translateY(-50%) rotate(7deg); z-index: 3;">
+                ${displayedEmojis[1]}
+            </span>
+        `;
+    } else if (displayedEmojis.length >= 3) {
+        stackedEmojisHtml = `
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin}px; transform: translateY(-50%) rotate(-10deg); z-index: 1;">
+                ${displayedEmojis[0]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + offsetIncrement}px; transform: translateY(-50%) rotate(0deg); z-index: 2;">
+                ${displayedEmojis[1]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + (2 * offsetIncrement)}px; transform: translateY(-50%) rotate(10deg); z-index: 3;">
+                ${displayedEmojis[2]}
+            </span>
+        `;
+    }
+
     return L.divIcon({
       className: 'custom-cluster-marker',
       html: `<div class="
-        bg-purple-700 
-        text-white 
-        border-2 border-purple-300 
+        bg-slate-800/95 
+        border-2 border-purple-600 
         rounded-full 
-        w-11 h-11 
-        flex items-center justify-center 
-        text-lg font-bold 
-        shadow-lg shadow-purple-600/50
-      ">${count}</div>`,
-      iconSize: [44, 44],
-      iconAnchor: [22, 22],
-      popupAnchor: [0, -22]
+        w-10 h-10 
+        relative /* İçindeki elemanlar için konumlandırma referansı */
+        overflow-hidden /* Kenarların dışına çıkan emojileri kırp */
+        shadow-md /* Tekil emoji ile aynı gölge */
+      ">${stackedEmojisHtml}</div>`,
+      iconSize: [40, 40], // Tekil emoji ile aynı boyut
+      iconAnchor: [20, 20], // Ortalanmış ikon çapası
+      popupAnchor: [0, -25] // Tekil emoji ile aynı popup çapası
     });
   };
 
 // --- ClusterPopupList Component (TUT-SÜRÜKLE KAYDIRMA KALDIRILDI) ---
 const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Sürükleme ile ilgili state'ler kaldırıldı:
-  // const [isDragging, setIsDragging] = useState(false);
-  // const [startY, setStartY] = useState(0);
-  // const [startScrollTop, setStartScrollTop] = useState(0);
-
-  // Sürükleme ile ilgili handler'lar kaldırıldı:
-  // const handleStart = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, []);
-  // const handleMove = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, [isDragging, startY, startScrollTop]);
-  // const handleEnd = useCallback((e: React.MouseEvent | React.TouchEvent) => { /* ... */ }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.stopPropagation(); // Fare tekerleğiyle kaydırmanın olay yayılımını durdur
@@ -86,20 +128,8 @@ const ClusterPopupList: React.FC<{ moods: Mood[] }> = ({ moods }) => {
   return (
     <div
       ref={scrollRef}
-      // Sürükleme ile ilgili className'ler kaldırıldı:
       className={`max-h-[250px] overflow-y-auto custom-scrollbar p-2 bg-slate-800 rounded-b-lg select-none`} 
-      // Tüm mouse ve touch event handler'ları kaldırıldı, sadece tekerlek kaydırma kaldı:
-      // onMouseDown={handleStart}
-      // onMouseMove={handleMove}
-      // onMouseUp={handleEnd}
-      // onMouseLeave={handleEnd}
-      // onTouchStart={handleStart}
-      // onTouchMove={handleMove}
-      // onTouchEnd={handleEnd}
-      // onTouchCancel={handleEnd}
       onWheel={handleWheel} 
-      // touchAction: 'none' yerine 'pan-y' kullanıldı. Bu, doğal dikey kaydırmaya izin verir, 
-      // ancak diğer dokunma hareketlerini (örn. harita pinch-to-zoom) etkilemez.
       style={{ touchAction: 'pan-y' }} 
     >
         {moods.map((m) => (
@@ -392,7 +422,8 @@ export default function Map({
                 <Marker
                     key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
-                    icon={isCluster ? createClusterIcon(group.length) : createEmojiIcon(mainMood.emoji)}
+                    // BURASI GÜNCELLENDİ: createClusterIcon artık emoji dizisi alıyor
+                    icon={isCluster ? createClusterIcon(group.map(m => m.emoji)) : createEmojiIcon(mainMood.emoji)}
                 >
                     <Popup className="dark-theme-popup" minWidth={220} maxWidth={280}>
                         {isCluster ? (
