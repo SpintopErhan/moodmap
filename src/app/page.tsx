@@ -570,7 +570,7 @@ export default function Home() {
             <div 
                 // top-24 ve bottom-24 ile dikey konum ve yükseklik ayarlandı.
                 // flex flex-col eklendi.
-                className={`absolute top-36 bottom-72 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
+                className={`absolute top-24 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} 
             >
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
