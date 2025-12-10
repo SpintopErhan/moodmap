@@ -8,7 +8,16 @@ import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
-import { Plus, Map as MapIcon, List, MapPin, X } from 'lucide-react'; // X ikonu hala başka yerlerde kullanıldığı için kalabilir.
+// X ikonu artık yan panelde kullanılmadığı için import listesinden kaldırıldı
+import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
+
+// ÖNEMLİ: types/app.ts dosyanızda ViewState enum'ına aşağıdaki değeri eklemelisiniz:
+// export enum ViewState {
+//   MAP = 'map',
+//   ADD = 'add',
+//   LIST = 'list',
+//   CLUSTER_LIST = 'cluster_list', // <-- BU SATIRI EKLEYİN
+// }
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -338,7 +347,6 @@ export default function Home() {
 
   const handleMapButtonClick = useCallback(() => {
     setSelectedClusterMoods(null); 
-
     if (view !== ViewState.MAP) {
       setView(ViewState.MAP);
       setTimeout(() => setShowPresetLocations(true), 0);
@@ -546,24 +554,11 @@ export default function Home() {
 
         {/* YENİ: Küme Listesi Yan Paneli */}
         {view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
-            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-transparent backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-24 pb-32"> {/* GÜNCELLENDİ: pt-24}
+            <div className="absolute top-0 right-0 h-full w-[240px] sm:w-80 md:w-96 z-50 bg-transparent backdrop-blur-xl animate-in slide-in-from-right-full fade-in duration-300 pointer-events-auto flex flex-col pt-24 pb-32">
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
-                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-0 shrink-0 md:text-lg"> {/* GÜNCELLENDİ: text-center ve padding eklendi */}
+                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-lg"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
-                {/* Eski başlık div'i ve kapatma butonu kaldırıldı */}
-                {/* <div className="flex justify-between items-center p-4 border-b border-slate-700 shadow-lg shrink-0">
-                    <h3 className="text-base font-bold text-purple-300 truncate md:text-lg">
-                        {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
-                    </h3>
-                    <button
-                        onClick={handleCloseClusterList}
-                        className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
-                        title="Close list"
-                    >
-                        <X size={24} />
-                    </button>
-                </div> */}
                 {/* MoodFeed bileşenini yeniden kullanıyoruz */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                     <MoodFeed
