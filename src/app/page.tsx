@@ -565,19 +565,21 @@ export default function Home() {
              </div>
         )}
 
-        {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve arka plan şeffaf yapıldı) */}
+        {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve kaydırma aktif edildi) */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
-                // top-20 ve h-[calc(100%-5rem)] ile konumu ayarlandı
-                // backdrop-blur-xl kaldırıldı, bg-transparent zaten şeffaf
-                className={`absolute top-24 right-0 h-[calc(100%-5rem)] w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}
+                // top-24 ve bottom-24 ile dikey konum ve yükseklik ayarlandı.
+                // flex flex-col eklendi.
+                className={`absolute top-24 bottom-24 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} 
             >
                 {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
+                {/* shrink-0 sayesinde başlık sabit yüksekliğini koruyacak */}
                 <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-md"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
                 {/* MoodFeed bileşenini yeniden kullanıyoruz */}
+                {/* flex-1 ile kalan alanı dolduracak, overflow-y-auto ile kaydırılabilir olacak */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4" onClick={(e) => e.stopPropagation()}>
                     <MoodFeed
                         moods={selectedClusterMoods}
