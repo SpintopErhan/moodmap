@@ -2,8 +2,13 @@
 
 const OPENCAGE_API_KEY = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
 
+// Cache için sabitler
+const REVERSE_GEOCODE_CACHE_KEY = 'reverse_geocode_cache';
+const FORWARD_GEOCODE_CACHE_KEY = 'forward_geocode_cache';
+const CACHE_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 gün
+const COORDINATE_PRECISION = 2; // Önbellek anahtarı için koordinat hassasiyeti (örn. 3 ondalık basamak)
+
 // OpenCage API yanıtları için tip tanımlamaları
-// Sadece kullanılan alanları veya gelecekte kullanılabilecek önemli alanları dahil ediyoruz.
 interface OpenCageComponents {
   county?: string;      // İlçe/Bölge
   town?: string;        // Kasaba
@@ -34,6 +39,61 @@ interface OpenCageResponse {
     // Diğer status alanları...
   };
   // Diğer meta veriler...
+}
+
+// Önbellek yapısı
+interface CacheEntry<T> {
+  value: T;
+  timestamp: number;
+}
+
+// Generic önbellek okuma fonksiyonu
+function getCache<T>(key: string, cacheKey: string): CacheEntry<T> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const fullCache = localStorage.getItem(cacheKey);
+    console.log(`[DEBUG Cache] getCache(${cacheKey}, ${key}) - Raw cache:`, fullCache); // Ek log
+    if (!fullCache) {
+      console.log(`[DEBUG Cache] No full cache found for ${cacheKey}`); // Ek log
+      return null;
+    }
+
+    const parsedCache = JSON.parse(fullCache);
+    const entry = parsedCache[key];
+
+    console.log(`[DEBUG Cache] getCache(${cacheKey}, ${key}) - Parsed cache entry:`, entry); // Ek log
+    
+    if (entry && (Date.now() - entry.timestamp < CACHE_EXPIRATION_MS)) {
+      console.log(`[Geolocation Cache] Hit for ${key} in ${cacheKey}`);
+      return entry;
+    } else if (entry) {
+      console.log(`[DEBUG Cache] Entry for ${key} in ${cacheKey} expired. Timestamp: ${entry.timestamp}, Current: ${Date.now()}`); // Ek log
+      delete parsedCache[key];
+      localStorage.setItem(cacheKey, JSON.stringify(parsedCache));
+      console.log(`[Geolocation Cache] Expired entry for ${key} in ${cacheKey} removed.`);
+    } else {
+      console.log(`[DEBUG Cache] No valid entry found for key ${key} in ${cacheKey}. (Miss or undefined)`); // Ek log
+    }
+  } catch (e) {
+    console.error(`[Geolocation Cache] Error reading cache ${cacheKey}:`, e);
+    // Hatalı veya bozuk önbelleği temizle
+    localStorage.removeItem(cacheKey);
+  }
+  return null;
+}
+
+// Generic önbellek yazma fonksiyonu
+function setCache<T>(key: string, value: T, cacheKey: string): void {
+  if (typeof window === 'undefined') return; // Sadece client tarafında çalışır
+  try {
+    const fullCache = localStorage.getItem(cacheKey);
+    const parsedCache = fullCache ? JSON.parse(fullCache) : {};
+    parsedCache[key] = { value, timestamp: Date.now() };
+    localStorage.setItem(cacheKey, JSON.stringify(parsedCache));
+    console.log(`[Geolocation Cache] Set for ${key} in ${cacheKey}`);
+  } catch (e) {
+    console.error(`[Geolocation Cache] Error writing cache ${cacheKey}:`, e);
+  }
 }
 
 /**
@@ -79,9 +139,15 @@ async function callOpenCageApi<T>(
  * Adres, ilçe, il/eyalet ve ülke bilgilerini içerecek şekilde formatlanır.
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  // Koordinatları belirli bir hassasiyete yuvarlayarak önbellek anahtarı oluştur
+  const cacheKeyRounded = `${lat.toFixed(COORDINATE_PRECISION)},${lng.toFixed(COORDINATE_PRECISION)}`;
+  const cached = getCache<string>(cacheKeyRounded, REVERSE_GEOCODE_CACHE_KEY);
+  if (cached) {
+    return cached.value;
+  }
+
   const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&pretty=1&no_annotations=1`;
 
-  // Ortak API çağrı helper fonksiyonunu kullan
   const data = await callOpenCageApi<OpenCageResponse>(url, "Reverse Geocoding");
   if (!data || !data.results || data.results.length === 0) {
     console.warn(`[Geolocation] No reverse geocoding results found for [${lat}, ${lng}]`);
@@ -103,45 +169,33 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   };
 
   // 1. En spesifik yerleşim birimini bulmaya çalış (ilçe, kasaba, banliyö, köy)
-  // Bu, "ilçe" seviyesindeki anonimliği sağlar.
-  const specificLocationFound = 
+  const specificLocationAdded = 
     addUniquePart(components.county) ||
     addUniquePart(components.town) ||
     addUniquePart(components.suburb) ||
     addUniquePart(components.village);
 
-  // 2. Şehir ekle (yalnızca daha spesifik bir yerleşim birimi bulunamadıysa veya farklıysa)
-  if (components.city && !addedParts.has(components.city)) {
-    // Eğer henüz hiç bir yerleşim birimi eklenmediyse veya eklenenlerden farklıysa şehri ekle
-    if (!specificLocationFound || (specificLocationFound && !formattedAddressParts.includes(components.city))) {
-        addUniquePart(components.city);
-    }
-  }
+  // 2. Şehir ekle
+  addUniquePart(components.city);
 
-  // 3. Eyalet/İl ekle (şehirden farklıysa veya şehir yoksa)
-  // "state" ve "province" OpenCage'de il/eyalet anlamına gelir.
+  // 3. Eyalet/İl ekle
   const stateOrProvince = components.state || components.province;
-  if (stateOrProvince && !addedParts.has(stateOrProvince)) {
-    // Eğer bir şehir veya daha spesifik bir yerleşim birimi eklendiyse,
-    // ve bu il/eyalet bunlardan farklıysa ekle.
-    // Örneğin "Kadıköy, İstanbul, Türkiye" -> "İstanbul" iki kere eklenmesin.
-    if (!formattedAddressParts.includes(stateOrProvince)) {
-        addUniquePart(stateOrProvince);
-    }
-  }
+  addUniquePart(stateOrProvince);
 
   // 4. Ülke ekle (her zaman en sona)
   addUniquePart(components.country);
 
   // Eğer çok az bilgi bulabildiysek (örn. sadece ülke), OpenCage'in tam formatlı adresini kullan
-  // Bu, her zaman anlamlı bir adres dönmesini sağlar.
   if (formattedAddressParts.length < 2 && data.results[0].formatted) {
     console.log(`[Geolocation] Not enough specific parts found for [${lat}, ${lng}]. Using full formatted address as fallback: "${data.results[0].formatted}"`);
-    return data.results[0].formatted;
+    const resultFallback = data.results[0].formatted;
+    setCache(cacheKeyRounded, resultFallback, REVERSE_GEOCODE_CACHE_KEY); // Önbelleğe kaydet
+    return resultFallback;
   }
   
   const result = formattedAddressParts.join(', ');
   console.log(`[Geolocation] Reverse geocoded [${lat}, ${lng}] to "${result}"`);
+  setCache(cacheKeyRounded, result, REVERSE_GEOCODE_CACHE_KEY); // Önbelleğe kaydet
   return result;
 }
 
@@ -154,11 +208,15 @@ export async function forwardGeocode(address: string): Promise<[number, number] 
     return null;
   }
 
+  const cacheKey = address.toLowerCase(); // Adres case-insensitive olabilir
+  const cached = getCache<[number, number]>(cacheKey, FORWARD_GEOCODE_CACHE_KEY);
+  if (cached) {
+    return cached.value;
+  }
+
   const encodedAddress = encodeURIComponent(address);
-  // `limit=1` en alakalı tek bir sonucun dönmesini sağlar.
   const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}&pretty=1&no_annotations=1&limit=1`;
 
-  // Ortak API çağrı helper fonksiyonunu kullan
   const data = await callOpenCageApi<OpenCageResponse>(url, "Forward Geocoding");
   if (!data || !data.results || data.results.length === 0) {
     console.warn(`[Geolocation] No forward geocoding results found for address: "${address}"`);
@@ -166,6 +224,8 @@ export async function forwardGeocode(address: string): Promise<[number, number] 
   }
 
   const { lat, lng } = data.results[0].geometry;
+  const result: [number, number] = [lat, lng];
   console.log(`[Geolocation] Forward geocoded "${address}" to [${lat}, ${lng}]`);
-  return [lat, lng];
+  setCache(cacheKey, result, FORWARD_GEOCODE_CACHE_KEY); // Önbelleğe kaydet
+  return result;
 }
