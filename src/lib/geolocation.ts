@@ -169,14 +169,18 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   };
 
   // 1. En spesifik yerleşim birimini bulmaya çalış (ilçe, kasaba, banliyö, köy)
-  // 'specificLocationAdded' değişkenini atamaktan vazgeçiyoruz.
-  // Sadece addUniquePart çağrılarını yapıyoruz.
-  addUniquePart(components.county) ||
-  addUniquePart(components.town) ||
-  addUniquePart(components.suburb) ||
-  addUniquePart(components.village);
+  // Bir kez bir parça eklendiyse, daha az spesifik olanları denemeyi durdururuz.
+  if (addUniquePart(components.county)) {
+    // İlçe eklendiyse başka bir şey deneme
+  } else if (addUniquePart(components.town)) {
+    // İlçe yoksa ve kasaba eklendiyse
+  } else if (addUniquePart(components.suburb)) {
+    // Kasaba yoksa ve banliyö eklendiyse
+  } else if (addUniquePart(components.village)) {
+    // Banliyö yoksa ve köy eklendiyse
+  }
 
-  // 2. Şehir ekle
+  // 2. Şehir ekle (bu, yukarıdakiyle çakışmaz, çünkü addUniquePart benzersizliği kontrol eder)
   addUniquePart(components.city);
 
   // 3. Eyalet/İl ekle
