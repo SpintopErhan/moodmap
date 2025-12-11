@@ -169,11 +169,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   };
 
   // 1. En spesifik yerleşim birimini bulmaya çalış (ilçe, kasaba, banliyö, köy)
-  const specificLocationAdded = 
-    addUniquePart(components.county) ||
-    addUniquePart(components.town) ||
-    addUniquePart(components.suburb) ||
-    addUniquePart(components.village);
+  // 'specificLocationAdded' değişkenini atamaktan vazgeçiyoruz.
+  // Sadece addUniquePart çağrılarını yapıyoruz.
+  addUniquePart(components.county) ||
+  addUniquePart(components.town) ||
+  addUniquePart(components.suburb) ||
+  addUniquePart(components.village);
 
   // 2. Şehir ekle
   addUniquePart(components.city);
