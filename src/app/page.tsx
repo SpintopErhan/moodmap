@@ -127,7 +127,7 @@ export default function Home() {
         console.error("Failed to load geolocation module dynamically:", err);
       });
 
-      const storedAnonFid = localStorage.getItem('farcatser_anon_fid'); // <-- BURASI DÜZELTİLDİ: 'let' -> 'const'
+      const storedAnonFid = localStorage.getItem('farcatser_anon_fid'); 
       if (storedAnonFid) { 
         setAnonFid(parseInt(storedAnonFid, 10));
         console.log("[page.tsx] Loaded anonymous FID from localStorage:", storedAnonFid);
@@ -155,7 +155,6 @@ export default function Home() {
 
     if (data) {
       const appMoods = data.map(mapSupabaseMoodToAppMood);
-      // YENİ: Mood'ları zaman damgasına göre azalan düzende sırala (en yeni önce)
       return appMoods.sort((a, b) => b.timestamp - a.timestamp); 
     }
     return [];
@@ -164,36 +163,28 @@ export default function Home() {
   // YENİ useEffect: Uygulamanın ilk yüklenmesinde mood'ları çek ve başlangıç görünümünü ayarla
   useEffect(() => {
     const initializeAppData = async () => {
-      // Sadece Farcaster SDK hala yüklüyorsa VEYA anonim FID henüz belirlenmediyse bekle.
-      // `status` değeri `useFarcasterMiniApp` tarafından 'loaded' veya 'error' olarak ayarlanır.
       if (status === 'loading' || anonFid === null) { 
         console.log("[page.tsx] Waiting for Farcaster status to be loaded or anonFid to be set...", { status, anonFid });
         return;
       }
 
-      // `useFarcasterMiniApp` hook'u status 'loaded' olduğunda user objesini (gerçek veya ANONYMOUS_USER) ayarlar.
-      // `ANONYMOUS_USER.fid` 0 olduğu için, `user?.fid` bu durumda 0 olacaktır.
-      // Kullanıcının isteği üzerine, Farcaster'dan gelen fid 0 ise kendi ürettiğimiz negatif anonFid'yi kullanacağız.
       let effectiveFid: number | null = null;
-      if (user?.fid && user.fid > 0) { // Eğer Farcaster kullanıcısı bağlıysa (gerçek FID > 0)
+      if (user?.fid && user.fid > 0) { 
         effectiveFid = user.fid;
         console.log("[page.tsx] Using Farcaster FID:", effectiveFid);
-      } else if (anonFid !== null) { // Eğer Farcaster anonim kullanıcıysa (user.fid 0) VEYA Farcaster bağlantısı başarısızsa (user undefined), yerel anonim FID'yi kullan
+      } else if (anonFid !== null) { 
         effectiveFid = anonFid;
         console.log("[page.tsx] Using Anonymous FID from localStorage:", effectiveFid);
       } else { 
-        // Bu durum, teorik olarak yukarıdaki `if (status === 'loading' || anonFid === null)` kontrolü sayesinde yakalanmış olmalıydı.
-        // Yine de bir fallback ekleyelim, hata ayıklama için.
         console.error("[page.tsx] Critical: effectiveFid could not be determined. Using 0 as fallback.");
-        effectiveFid = 0; // Son çare fallback
+        effectiveFid = 0; 
       }
       
-      // Eğer efektif FID hala null ise (çok nadir, yukarıdaki kontrolü geçse bile)
       if (effectiveFid === null) {
           console.error("[page.tsx] Critical: effectiveFid is null after determination logic. Setting error.");
           setCastError("Critical error: User ID is missing for database operations.");
           setIsInitialLoadComplete(true); 
-          setView(ViewState.ADD); // Ekleme ekranına düşür
+          setView(ViewState.ADD); 
           return;
       }
 
@@ -206,7 +197,7 @@ export default function Home() {
         .eq('fid', effectiveFid)
         .single(); 
 
-      if (userMoodError && userMoodError.code !== 'PGRST116') { // PGRST116: "No rows found" hatası
+      if (userMoodError && userMoodError.code !== 'PGRST116') { 
         console.error("Error fetching user's initial mood:", userMoodError);
         setCastError(`Failed to load your mood: ${userMoodError.message}`);
         setView(ViewState.ADD); 
@@ -242,7 +233,7 @@ export default function Home() {
     };
 
     initializeAppData();
-  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]); // Düzeltildi: setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger eklendi
+  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]);
 
 
   const handleCloseAllPanels = useCallback(() => {
@@ -600,12 +591,10 @@ export default function Home() {
     if (view !== ViewState.MAP) {
       handleCloseAllPanels(); 
     }
-    // YENİ: Küme moodlarını da zaman damgasına göre azalan düzende sırala
     const sortedClusterMoods = moodsInCluster.sort((a, b) => b.timestamp - a.timestamp);
     setSelectedClusterMoods(sortedClusterMoods); 
     setView(ViewState.CLUSTER_LIST); 
-    setShowPresetLocations(false); 
-    console.log("[page.tsx] Cluster clicked, showing moods:", sortedClusterMoods); // Log güncellendi
+    console.log("[page.tsx] Cluster clicked, showing moods:", sortedClusterMoods); 
   }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]);
 
 
@@ -643,24 +632,46 @@ export default function Home() {
       )}
 
       {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
-      <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
-        <div className="flex justify-end items-start gap-3">
-            {/* Kullanıcı adı kutusu */}
-            <div className="text-right p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto">
-                <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
-            </div>
-            {/* Konum Navigasyon Butonu (kullanıcı adının sağında) */}
-            <button
-                onClick={handleRecenterToUserLocation}
-                disabled={isRecenterButtonDisabled} 
-                className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700 pointer-events-auto
-                    ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
-                title="Recenter to your location or last mood location"
-            >
-                <MapPin size={24} />
-            </button>
+      {/* DEĞİŞİKLİK 1: Sadece ViewState.LIST dışındaysa bu üst çubuğu göster */}
+      {view !== ViewState.LIST && (
+        <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
+          {/* Top-left container (user info + recent mood) */}
+          <div className="flex flex-col items-start gap-2"> 
+              {/* 1. ROW: Kullanıcı adı kutusu ve Konum Navigasyon Butonu */}
+              <div className="flex items-center gap-3 pointer-events-auto">
+                  {/* Kullanıcı adı kutusu */}
+                  <div className="p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700">
+                      <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
+                  </div>
+                  {/* Konum Navigasyon Butonu */}
+                  <button
+                      onClick={handleRecenterToUserLocation}
+                      disabled={isRecenterButtonDisabled} 
+                      className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
+                          ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                      title="Recenter to your location or last mood location"
+                  >
+                      <MapPin size={24} />
+                  </button>
+              </div>
+
+              {/* 2. ROW: Kullanıcının son mod'u (emoji ve not) */}
+              {/* Daha önce hem LIST hem CLUSTER_LIST'te gizliydi. Şimdi, üst çubuk sadece LIST'te gizlendiği için, 
+                  buradaki koşulu sadece lastLocallyPostedMood olup olmadığına bakarak basitleştiriyoruz.
+                  Bu sayede CLUSTER_LIST açıkken de kullanıcının son modu görünecek. */}
+              {lastLocallyPostedMood && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto max-w-[calc(100vw-32px)]">
+                      <span className="text-2xl">{lastLocallyPostedMood.emoji}</span>
+                      {lastLocallyPostedMood.text && (
+                          <span className="text-base text-slate-200 truncate max-w-full">
+                              {lastLocallyPostedMood.text}
+                          </span>
+                      )}
+                  </div>
+              )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 relative z-0">
@@ -677,10 +688,12 @@ export default function Home() {
             />
         </div>
 
-        {/* List View Overlay */}
+        {/* List View Overlay - YENİ Z-INDEX */}
         { view === ViewState.LIST && (
             <div
-                className={`absolute inset-0 z-[55] pt-20 px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300`}
+                // DEĞİŞİKLİK 2: Üst çubuk gizlendiği için pt-20 değerini kaldırıldı.
+                // MoodFeed artık en üstten başlayacak. px-2 ve pb-20 korunarak yatay boşluk ve alt navigasyon çubuğu boşluğu sağlanır.
+                className={`absolute inset-0 z-[65] px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300`}
                 onClick={handleCloseAllPanels} 
             >
                  <div
@@ -695,16 +708,16 @@ export default function Home() {
             </div>
         )}
 
-         {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve kaydırma aktif edildi) */}
+         {/* Küme Listesi Yan Paneli - YENİ Z-INDEX */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
-                className={`absolute top-24 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
+                className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} 
             >
-                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-sm"> 
+                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-1" onClick={(e) => e.stopPropagation()}>
                     <MoodFeed
                         moods={selectedClusterMoods}
                         onCloseRequest={handleCloseAllPanels} 

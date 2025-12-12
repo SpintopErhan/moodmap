@@ -146,7 +146,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
     return cached.value;
   }
 
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&pretty=1&no_annotations=1`;
+  // BURADA DEĞİŞİKLİK YAPIYORUZ: '&language=en' parametresi eklendi.
+  const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&pretty=1&no_annotations=1&language=en`;
 
   const data = await callOpenCageApi<OpenCageResponse>(url, "Reverse Geocoding");
   if (!data || !data.results || data.results.length === 0) {
@@ -220,6 +221,10 @@ export async function forwardGeocode(address: string): Promise<[number, number] 
   }
 
   const encodedAddress = encodeURIComponent(address);
+  // Forward geocoding için de dil parametresi eklenebilir. Eğer gönderdiğiniz adres Almancaysa ve API'nin bunu Almanca yorumlamasını istiyorsanız,
+  // buraya da '&language=de' gibi bir şey ekleyebilirsiniz. Ancak genellikle forward geocoding'de API,
+  // verilen adresi hangi dilde olursa olsun yorumlar ve koordinat döndürür.
+  // Eğer sonuçlardaki `formatted` alanı gibi metinleri kullanıyorsanız, o zaman language parametresi önemli olabilir.
   const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}&pretty=1&no_annotations=1&limit=1`;
 
   const data = await callOpenCageApi<OpenCageResponse>(url, "Forward Geocoding");

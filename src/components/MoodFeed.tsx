@@ -71,7 +71,8 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
       {/* Kaydırılabilir alan ve kartlar arası boşluk */}
       <div 
         ref={scrollRef}
-        className="overflow-y-auto custom-scrollbar flex-1 p-2 space-y-2" 
+        // DEĞİŞİKLİK: pt-4'ü pt-1 olarak geri değiştirelim
+        className="overflow-y-auto custom-scrollbar flex-1 pt-1 px-2 pb-2 space-y-2" 
         onWheel={handleWheel}
         style={{ touchAction: 'pan-y' }}
       >
