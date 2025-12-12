@@ -72,7 +72,7 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
 };
 
 export default function Home() {
-  const { user, status, error, composeCast } = useFarcasterMiniApp();
+  const { user, status, error, composeCast } = useFarcasterMiniApp(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
@@ -82,7 +82,7 @@ export default function Home() {
     animate: boolean,
     purpose: 'userLocation' | 'presetLocation' 
   } | null>(null);
-  const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null);
+  const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   const [isMapCenteredOnUserLocation, setIsMapCenteredOnUserLocation] = useState(false);
   
@@ -127,7 +127,7 @@ export default function Home() {
         console.error("Failed to load geolocation module dynamically:", err);
       });
 
-      let storedAnonFid = localStorage.getItem('farcatser_anon_fid'); 
+      const storedAnonFid = localStorage.getItem('farcatser_anon_fid'); // <-- BURASI DÜZELTİLDİ: 'let' -> 'const'
       if (storedAnonFid) { 
         setAnonFid(parseInt(storedAnonFid, 10));
         console.log("[page.tsx] Loaded anonymous FID from localStorage:", storedAnonFid);
@@ -242,7 +242,7 @@ export default function Home() {
     };
 
     initializeAppData();
-  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError]);
+  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]); // Düzeltildi: setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger eklendi
 
 
   const handleCloseAllPanels = useCallback(() => {
@@ -468,6 +468,35 @@ export default function Home() {
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods 
   ]); 
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleCastLastMoodToFarcaster = useCallback(async () => {
+    if (!lastLocallyPostedMood) {
+        setCastError("No mood found to share on Farcaster.");
+        return;
+    }
+    if (!user?.fid) {
+        setCastError("You must be logged in as a Farcaster user to create a cast.");
+        return;
+    }
+
+    setIsSubmitting(true);
+    setCastError(null);
+
+    try {
+        const castContent = lastLocallyPostedMood.text
+            ? `${lastLocallyPostedMood.emoji} ${lastLocallyPostedMood.text} at ${lastLocallyPostedMood.locationLabel || "a location"}`
+            : `${lastLocallyPostedMood.emoji} at ${lastLocallyPostedMood.locationLabel || "a location"}`;
+
+        await composeCast(castContent);
+        console.log("Mood successfully cast to Farcaster.");
+    } catch (castErr) {
+        console.error("Error sharing mood on Farcaster:", castErr);
+        setCastError("Failed to share on Farcaster. Please try again.");
+    } finally {
+        setIsSubmitting(false);
+    }
+  }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
