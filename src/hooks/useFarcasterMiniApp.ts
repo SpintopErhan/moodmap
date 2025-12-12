@@ -1,4 +1,4 @@
-//src\hooks\useFarcasterMiniApp.ts
+//src/hooks/useFarcasterMiniApp.ts
 
 "use client";
 

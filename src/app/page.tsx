@@ -4,20 +4,12 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useFarcasterMiniApp } from "@/hooks/useFarcasterMiniApp";
+import { supabase } from '@/lib/supabase';
 
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
-import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS, MOCK_MOODS } from '@/types/app';
+import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
-
-// Önemli Not: ViewState enum'ına 'CLUSTER_LIST' değerini daha önce 'src/types/app.ts' dosyanızda eklemiş olmalısınız.
-// Eğer eklemediyseniz, lütfen aşağıdaki gibi ekleyin:
-// export enum ViewState {
-//   MAP = 'map',
-//   ADD = 'add',
-//   LIST = 'list',
-//   CLUSTER_LIST = 'cluster_list',
-// }
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -46,12 +38,38 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 8 },
   { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 8 },
   { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 9 },
-  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, // Fas için Marrakech
-  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, // Güney Afrika için Cape Town
+  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, 
+  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, 
   { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
-  { id: 'world', name: 'World', coords: [0, 0], zoom: 3 }, // Yeni eklendi: Tüm dünyayı gösterir, zoom 3
+  { id: 'world', name: 'World', coords: [0, 0], zoom: 3 }, 
 ];
 
+// Supabase'den gelen veriyi uygulama Mood tipine dönüştüren yardımcı fonksiyon
+interface SupabaseMood {
+  uuid: string;
+  username: string;
+  display_name: string;
+  fid: number;
+  location_label: string;
+  center_lat: number;
+  center_lng: number;
+  emoji: string;
+  user_note: string;
+  mood_date: string; // ISO string formatında
+}
+
+const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
+  return {
+    id: dbMood.uuid, // Supabase UUID'sini Mood id olarak kullan
+    emoji: dbMood.emoji,
+    text: dbMood.user_note,
+    location: { lat: dbMood.center_lat, lng: dbMood.center_lng },
+    locationLabel: dbMood.location_label,
+    timestamp: new Date(dbMood.mood_date).getTime(), // ISO string'i timestamp'e çevir
+    userId: dbMood.fid.toString(), // fid'yi string olarak sakla
+    username: dbMood.username,
+  };
+};
 
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp();
@@ -70,13 +88,13 @@ export default function Home() {
   
   const [showPresetLocations, setShowPresetLocations] = useState(false);
 
-  const [view, setView] = useState<ViewState>(ViewState.ADD);
+  const [view, setView] = useState<ViewState | null>(null); 
 
-  const [moods, setMoods] = useState<Mood[]>(MOCK_MOODS);
+  const [moods, setMoods] = useState<Mood[]>([]);
   const [selectedEmoji, setSelectedEmoji] = useState(MOOD_OPTIONS[0].emoji);
   const [statusText, setStatusText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [castError, setCastError] = useState<string | null>(null);
+  const [castError, setCastError] = useState<string | null>(null); 
 
   const [selectedClusterMoods, setSelectedClusterMoods] = useState<Mood[] | null>(null); 
 
@@ -87,13 +105,16 @@ export default function Home() {
 
   const defaultZoomLevel = useMemo(() => 14, []);
 
-  // Geolocation fonksiyonlarını dinamik olarak yüklemek için state
   const [geolocationFunctions, setGeolocationFunctions] = useState<{
     reverseGeocode: (lat: number, lng: number) => Promise<string | null>;
     forwardGeocode: (address: string) => Promise<[number, number] | null>;
   } | null>(null);
 
-  // Geolocation modülünü sadece istemci tarafında yüklüyoruz
+  const [anonFid, setAnonFid] = useState<number | null>(null);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false); 
+
+
+  // Geolocation ve Anonim FID yükleme
   useEffect(() => {
     if (typeof window !== 'undefined') {
       import('@/lib/geolocation').then(mod => {
@@ -105,12 +126,126 @@ export default function Home() {
       }).catch(err => {
         console.error("Failed to load geolocation module dynamically:", err);
       });
+
+      let storedAnonFid = localStorage.getItem('farcatser_anon_fid'); 
+      if (storedAnonFid) { 
+        setAnonFid(parseInt(storedAnonFid, 10));
+        console.log("[page.tsx] Loaded anonymous FID from localStorage:", storedAnonFid);
+      } else {
+        const newAnonFid = -(Math.floor(Math.random() * 2_000_000_000) + 1);
+        localStorage.setItem('farcatser_anon_fid', newAnonFid.toString());
+        setAnonFid(newAnonFid);
+        console.log("[page.tsx] Generated new anonymous FID and stored in localStorage:", newAnonFid);
+      }
     }
   }, []);
 
-  // Tüm açık panelleri ve ilgili state'leri anında sıfırlayan merkezi fonksiyon (basit versiyon)
+  // Tüm mood'ları Supabase'den çeken yardımcı fonksiyon
+  const fetchAllMoods = useCallback(async () => {
+    console.log("[page.tsx] Fetching all moods from Supabase...");
+    const { data, error } = await supabase
+      .from('moods')
+      .select('*');
+
+    if (error) {
+      console.error("Error fetching all moods:", error);
+      setCastError(`Failed to load moods: ${error.message}`);
+      return [];
+    }
+
+    if (data) {
+      const appMoods = data.map(mapSupabaseMoodToAppMood);
+      // YENİ: Mood'ları zaman damgasına göre azalan düzende sırala (en yeni önce)
+      return appMoods.sort((a, b) => b.timestamp - a.timestamp); 
+    }
+    return [];
+  }, []);
+
+  // YENİ useEffect: Uygulamanın ilk yüklenmesinde mood'ları çek ve başlangıç görünümünü ayarla
+  useEffect(() => {
+    const initializeAppData = async () => {
+      // Sadece Farcaster SDK hala yüklüyorsa VEYA anonim FID henüz belirlenmediyse bekle.
+      // `status` değeri `useFarcasterMiniApp` tarafından 'loaded' veya 'error' olarak ayarlanır.
+      if (status === 'loading' || anonFid === null) { 
+        console.log("[page.tsx] Waiting for Farcaster status to be loaded or anonFid to be set...", { status, anonFid });
+        return;
+      }
+
+      // `useFarcasterMiniApp` hook'u status 'loaded' olduğunda user objesini (gerçek veya ANONYMOUS_USER) ayarlar.
+      // `ANONYMOUS_USER.fid` 0 olduğu için, `user?.fid` bu durumda 0 olacaktır.
+      // Kullanıcının isteği üzerine, Farcaster'dan gelen fid 0 ise kendi ürettiğimiz negatif anonFid'yi kullanacağız.
+      let effectiveFid: number | null = null;
+      if (user?.fid && user.fid > 0) { // Eğer Farcaster kullanıcısı bağlıysa (gerçek FID > 0)
+        effectiveFid = user.fid;
+        console.log("[page.tsx] Using Farcaster FID:", effectiveFid);
+      } else if (anonFid !== null) { // Eğer Farcaster anonim kullanıcıysa (user.fid 0) VEYA Farcaster bağlantısı başarısızsa (user undefined), yerel anonim FID'yi kullan
+        effectiveFid = anonFid;
+        console.log("[page.tsx] Using Anonymous FID from localStorage:", effectiveFid);
+      } else { 
+        // Bu durum, teorik olarak yukarıdaki `if (status === 'loading' || anonFid === null)` kontrolü sayesinde yakalanmış olmalıydı.
+        // Yine de bir fallback ekleyelim, hata ayıklama için.
+        console.error("[page.tsx] Critical: effectiveFid could not be determined. Using 0 as fallback.");
+        effectiveFid = 0; // Son çare fallback
+      }
+      
+      // Eğer efektif FID hala null ise (çok nadir, yukarıdaki kontrolü geçse bile)
+      if (effectiveFid === null) {
+          console.error("[page.tsx] Critical: effectiveFid is null after determination logic. Setting error.");
+          setCastError("Critical error: User ID is missing for database operations.");
+          setIsInitialLoadComplete(true); 
+          setView(ViewState.ADD); // Ekleme ekranına düşür
+          return;
+      }
+
+
+      // 1. Kullanıcının kendi mood'unu kontrol et
+      console.log(`[page.tsx] Checking for user's mood with FID: ${effectiveFid}`);
+      const { data: userMoodData, error: userMoodError } = await supabase
+        .from('moods')
+        .select('*')
+        .eq('fid', effectiveFid)
+        .single(); 
+
+      if (userMoodError && userMoodError.code !== 'PGRST116') { // PGRST116: "No rows found" hatası
+        console.error("Error fetching user's initial mood:", userMoodError);
+        setCastError(`Failed to load your mood: ${userMoodError.message}`);
+        setView(ViewState.ADD); 
+      } else if (userMoodData) {
+        console.log("[page.tsx] User's initial mood found:", userMoodData);
+        const userAppMood = mapSupabaseMoodToAppMood(userMoodData);
+        setLastLocallyPostedMood(userAppMood); 
+        setUserLastMoodLocation({ 
+            name: userAppMood.locationLabel || "Unknown Location",
+            coords: [userAppMood.location.lat, userAppMood.location.lng],
+            zoom: defaultZoomLevel, 
+            popupText: userAppMood.text || userAppMood.emoji,
+            locationType: 'user' 
+        });
+        setMapRecenterTrigger({
+            coords: [userAppMood.location.lat, userAppMood.location.lng],
+            zoom: defaultZoomLevel,
+            animate: false,
+            purpose: 'userLocation',
+        });
+        setView(ViewState.MAP); 
+      } else {
+        console.log("[page.tsx] No mood found for current user, opening Add Mood screen.");
+        setView(ViewState.ADD); 
+      }
+
+      // 2. Tüm mood'ları harita için çek
+      const allMoods = await fetchAllMoods();
+      setMoods(allMoods);
+
+      setIsInitialLoadComplete(true); 
+      console.log("[page.tsx] Initial app data loading complete.");
+    };
+
+    initializeAppData();
+  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError]);
+
+
   const handleCloseAllPanels = useCallback(() => {
-    // Eğer harita görünümündeyken çağrıldıysa, sadece presetleri ve küme moodlarını kapat
     if (view === ViewState.MAP) { 
         setSelectedClusterMoods(null);
         setShowPresetLocations(false);
@@ -118,13 +253,13 @@ export default function Home() {
         return;
     }
     
-    setView(ViewState.MAP); // Her zaman harita görünümüne dön
-    setSelectedClusterMoods(null); // Küme listesini kapat
-    setShowPresetLocations(false); // Ön tanımlı konumlar menüsünü kapat
-    setSelectedEmoji(MOOD_OPTIONS[0].emoji); // Seçili emojiyi varsayılana sıfırla
-    setStatusText(''); // Mood metnini temizle
-    setIsSubmitting(false); // Gönderim durumunu sıfırla
-    setCastError(null); // Hata mesajını temizle
+    setView(ViewState.MAP); 
+    setSelectedClusterMoods(null); 
+    setShowPresetLocations(false); 
+    setSelectedEmoji(MOOD_OPTIONS[0].emoji); 
+    setStatusText(''); 
+    setIsSubmitting(false); 
+    setCastError(null); 
     console.log("[page.tsx] All panels closed and states reset to map view.");
   }, [view, setSelectedClusterMoods, setShowPresetLocations, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError]);
 
@@ -145,68 +280,86 @@ export default function Home() {
 
       const [preciseLat, preciseLng] = locationData.coords;
       let finalLocationLabel: string = "Unknown Location";
-      let geocodedCoords: [number, number] = [preciseLat, preciseLng]; // Başlangıçta hassas koordinatları kullan
+      let geocodedCoords: [number, number] = [preciseLat, preciseLng]; 
 
       if (locationData.locationType === 'user') {
         try {
-          // Hassas koordinatlardan okunabilir bir adres etiketi al
           const geocodedResult = await geolocationFunctions.reverseGeocode(preciseLat, preciseLng);
           if (geocodedResult) {
             finalLocationLabel = geocodedResult;
-            // Etiketi tekrar koordinata çevirerek daha soyut bir konum merkezi bul
             const forwardGeocodedResult = await geolocationFunctions.forwardGeocode(geocodedResult);
             if (forwardGeocodedResult) {
-              geocodedCoords = forwardGeocodedResult; // Soyutlanmış koordinatları kullan
+              geocodedCoords = forwardGeocodedResult; 
             } else {
               console.warn("[page.tsx] Forward geocoding failed for user location label, falling back to precise coordinates.");
-              // geocodedCoords zaten preciseLat, preciseLng olarak başlatıldı, bu durumda değişmez
             }
           } else {
             console.warn("[page.tsx] Reverse geocoding returned no label for user location, using 'Unknown Location'. Falling back to precise coordinates.");
-            // finalLocationLabel "Unknown Location" kalır, geocodedCoords precise kalır
           }
         } catch (error) {
           console.error("[page.tsx] Error during geocoding process for user location:", error);
-          // Hata durumunda finalLocationLabel "Unknown Location" kalır, geocodedCoords precise kalır
         }
       } else {
-        // Önceden tanımlanmış veya fallback konumlar için
         finalLocationLabel = locationData.name || "Unknown Location";
-        geocodedCoords = locationData.coords; // Önceden tanımlanmış koordinatları kullan
+        geocodedCoords = locationData.coords; 
       }
 
       setCurrentDeterminedLocationData({
-        coords: geocodedCoords, // Soyutlanmış veya hassas koordinatlar
+        coords: geocodedCoords, 
         timestamp: locationData.timestamp,
         accuracy: locationData.accuracy,
-        locationLabel: finalLocationLabel, // Soyutlanmış adres etiketi
+        locationLabel: finalLocationLabel, 
         zoom: locationData.zoom ?? defaultZoomLevel,
         locationType: locationData.locationType,
       });
 
-      // Başlangıçta kullanıcı konumuna odaklandığı için true
       setIsMapCenteredOnUserLocation(true); 
     }, [geolocationFunctions, setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
 
 
   const handleAddMood = useCallback(async () => {
     if (!currentDeterminedLocationData) {
-        alert("Location information is not available to share your mood. Please determine the location.");
+        setCastError("Location information is not available to share your mood. Please determine the location."); 
+        return;
+    }
+
+    if (user?.fid === undefined && anonFid === null) { 
+        setCastError("User ID is not yet determined. Please wait a moment.");
         return;
     }
 
     setIsSubmitting(true);
     setCastError(null);
 
-    const currentUserId = user?.fid ? user.fid.toString() : 'anon';
-    const currentUsername = user?.username || 'Anonymous User'; 
+    let actualFid: number | null = null;
+    if (user?.fid && user.fid > 0) { 
+        actualFid = user.fid;
+    } else if (anonFid !== null) { 
+        actualFid = anonFid;
+    } else {
+        setCastError("Could not determine user ID for database operations.");
+        setIsSubmitting(false);
+        return;
+    }
 
-    const existingMoodIndex = moods.findIndex(mood => mood.userId === currentUserId);
+    if (actualFid === null) {
+        setCastError("User ID is missing for database operations.");
+        setIsSubmitting(false);
+        return;
+    }
+
+    const currentUserIdForLocalState = actualFid.toString(); 
+
+    const currentUsername = user?.username || 'Anonymous User'; 
+    const currentUserDisplayName = user?.displayName || user?.username || 'Anonymous User'; 
 
     const newLocation: Location = { lat: currentDeterminedLocationData.coords[0], lng: currentDeterminedLocationData.coords[1] };
     const newLocationLabel = currentDeterminedLocationData.locationLabel || "Unknown Location";
+    const moodTimestamp = Date.now(); 
 
     let moodToPost: Mood;
+
+    const existingMoodIndex = moods.findIndex(mood => mood.userId === currentUserIdForLocalState);
 
     if (existingMoodIndex !== -1) {
       const existingMood = moods[existingMoodIndex];
@@ -216,7 +369,7 @@ export default function Home() {
         text: statusText.trim(),
         location: newLocation,
         locationLabel: newLocationLabel,
-        timestamp: Date.now(),
+        timestamp: moodTimestamp, 
       };
 
       setMoods(prev => {
@@ -227,75 +380,94 @@ export default function Home() {
 
     } else {
       moodToPost = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).substr(2, 9), 
           emoji: selectedEmoji,
           text: statusText.trim(),
           location: newLocation,
           locationLabel: newLocationLabel,
-          timestamp: Date.now(),
-          userId: currentUserId,
+          timestamp: moodTimestamp, 
+          userId: currentUserIdForLocalState, 
           username: currentUsername
       };
 
       setMoods(prev => [moodToPost, ...(prev || [])]);
     }
+    
+    // --- Supabase Veritabanı Kayıt İşlemi ---
+    const fidForSupabase = actualFid; 
 
-    setUserLastMoodLocation({
-        name: moodToPost.locationLabel || "Unknown Location",
-        coords: [moodToPost.location.lat, moodToPost.location.lng],
-        zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
-        popupText: moodToPost.text || moodToPost.emoji,
-    });
-    setMapRecenterTrigger({
-        coords: [moodToPost.location.lat, moodToPost.location.lng],
-        zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
-        animate: false,
-        purpose: 'userLocation', 
-    });
+    try {
+        const supabaseData = {
+            username: currentUsername,
+            display_name: currentUserDisplayName,
+            fid: fidForSupabase, 
+            location_label: newLocationLabel,
+            center_lat: newLocation.lat,
+            center_lng: newLocation.lng,
+            emoji: moodToPost.emoji,
+            user_note: moodToPost.text,
+            mood_date: new Date(moodToPost.timestamp).toISOString(), 
+        };
 
-    setLastLocallyPostedMood(moodToPost);
+        console.log("Attempting to upsert to Supabase with data:", supabaseData);
 
-    setIsMapCenteredOnUserLocation(true); 
+        const { data, error: dbError } = await supabase
+            .from('moods') 
+            .upsert(supabaseData, {
+                onConflict: 'fid', 
+                ignoreDuplicates: false, 
+            })
+            .select(); 
 
-    handleCloseAllPanels(); // Mood eklendikten sonra tüm panelleri kapat
+        if (dbError) {
+            console.error("Supabase upsert error:", dbError);
+            setCastError(`Failed to save mood to database: ${dbError.message}`);
+        } else {
+            console.log("Mood successfully saved/updated in Supabase:", data);
+            const updatedAllMoods = await fetchAllMoods();
+            setMoods(updatedAllMoods);
+
+            const updatedUserMood = updatedAllMoods.find(m => m.userId === currentUserIdForLocalState);
+            if (updatedUserMood) {
+                setLastLocallyPostedMood(updatedUserMood);
+            }
+        }
+
+    } catch (unexpectedError) {
+        console.error("An unexpected error occurred during Supabase operation:", unexpectedError);
+        setCastError(`An unexpected database error occurred.`);
+    } finally {
+        setUserLastMoodLocation({
+            name: moodToPost.locationLabel || "Unknown Location",
+            coords: [moodToPost.location.lat, moodToPost.location.lng],
+            zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
+            popupText: moodToPost.text || moodToPost.emoji,
+            locationType: currentDeterminedLocationData?.locationType || 'fallback'
+        });
+        setMapRecenterTrigger({
+            coords: [moodToPost.location.lat, moodToPost.location.lng],
+            zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
+            animate: false,
+            purpose: 'userLocation', 
+        });
+
+        setLastLocallyPostedMood(moodToPost);
+        setIsMapCenteredOnUserLocation(true); 
+
+        setIsSubmitting(false);
+        handleCloseAllPanels(); 
+    }
   }, [
     currentDeterminedLocationData, 
     user?.fid, 
+    anonFid, 
     user?.username,
+    user?.displayName, 
     defaultZoomLevel, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
-    setIsMapCenteredOnUserLocation, handleCloseAllPanels 
-  ]);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleCastLastMoodToFarcaster = useCallback(async () => {
-    if (!lastLocallyPostedMood) {
-        setCastError("No mood found to share on Farcaster.");
-        return;
-    }
-    if (!user?.fid) {
-        setCastError("You must be logged in as a Farcaster user to create a cast.");
-        return;
-    }
-
-    setIsSubmitting(true);
-    setCastError(null);
-
-    try {
-        const castContent = lastLocallyPostedMood.text
-            ? `${lastLocallyPostedMood.emoji} ${lastLocallyPostedMood.text} at ${lastLocallyPostedMood.locationLabel || "a location"}`
-            : `${lastLocallyPostedMood.emoji} at ${lastLocallyPostedMood.locationLabel || "a location"}`;
-
-        await composeCast(castContent);
-        console.log("Mood successfully cast to Farcaster.");
-    } catch (castErr) {
-        console.error("Error sharing mood on Farcaster:", castErr);
-        setCastError("Failed to share on Farcaster. Please try again.");
-    } finally {
-        setIsSubmitting(false);
-    }
-  }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]);
+    setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods 
+  ]); 
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
@@ -362,7 +534,7 @@ export default function Home() {
   }, [userLastMoodLocation, currentDeterminedLocationData, isMapCenteredOnUserLocation]);
 
   const handleMapButtonClick = useCallback(() => {
-    if (view !== ViewState.MAP) {
+    if (view !== ViewState.MAP) { 
       handleCloseAllPanels();
     }
     setShowPresetLocations(prev => !prev);
@@ -399,18 +571,23 @@ export default function Home() {
     if (view !== ViewState.MAP) {
       handleCloseAllPanels(); 
     }
-    setSelectedClusterMoods(moodsInCluster); 
+    // YENİ: Küme moodlarını da zaman damgasına göre azalan düzende sırala
+    const sortedClusterMoods = moodsInCluster.sort((a, b) => b.timestamp - a.timestamp);
+    setSelectedClusterMoods(sortedClusterMoods); 
     setView(ViewState.CLUSTER_LIST); 
     setShowPresetLocations(false); 
-    console.log("[page.tsx] Cluster clicked, showing moods:", moodsInCluster);
+    console.log("[page.tsx] Cluster clicked, showing moods:", sortedClusterMoods); // Log güncellendi
   }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]);
 
 
-  if (status === "loading") {
+  const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
+
+  // Başlangıç yükleme ekranı
+  if (status === "loading" || !isInitialLoadComplete || view === null) {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
         <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p>
-        <p className="text-lg text-gray-400 mt-2">Awaiting user permission...</p>
+        <p className="text-lg text-gray-400 mt-2">Initializing data and location...</p>
       </main>
     );
   }
@@ -492,18 +669,12 @@ export default function Home() {
          {/* YENİ: Küme Listesi Yan Paneli (Y ekseni konumu ayarlandı ve kaydırma aktif edildi) */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
-                // top-24 ve bottom-24 ile dikey konum ve yükseklik ayarlandı.
-                // flex flex-col eklendi.
                 className={`absolute top-24 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[55] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} 
             >
-                {/* Konum başlığı şimdi MoodFeed'in üstünde, ortalanmış bir şekilde */}
-                {/* shrink-0 sayesinde başlık sabit yüksekliğini koruyacak */}
                 <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-2 shrink-0 md:text-sm"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
-                {/* MoodFeed bileşenini yeniden kullanıyoruz */}
-                {/* flex-1 ile kalan alanı dolduracak, overflow-y-auto ile kaydırılabilir olacak */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4" onClick={(e) => e.stopPropagation()}>
                     <MoodFeed
                         moods={selectedClusterMoods}
@@ -566,6 +737,7 @@ export default function Home() {
                                     }`}
                                 >
                                     <div className="pointer-events-none">{opt.emoji}</div>
+                                
                                 </button>
                             ))}
                         </div>
@@ -590,7 +762,7 @@ export default function Home() {
                             <Button variant="secondary" className="flex-1" onClick={handleCloseAllPanels} disabled={isSubmitting}>
                                 Cancel
                             </Button>
-                            <Button className="flex-1" onClick={handleAddMood} isLoading={isSubmitting} disabled={!currentDeterminedLocationData}>
+                            <Button className="flex-1" onClick={handleAddMood} isLoading={isSubmitting} disabled={isPostVibeButtonDisabled}>
                                 Post Vibe
                             </Button>
                         </div>
@@ -636,12 +808,12 @@ export default function Home() {
             {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
                 onClick={() => { 
-                    if (view !== ViewState.MAP) { // Eğer harita görünümünde değilsek
-                      handleCloseAllPanels(); // Açık olan diğer panelleri kapat
+                    if (view !== ViewState.MAP) { 
+                      handleCloseAllPanels(); 
                     }
-                    setView(ViewState.ADD); // Add Mood görünümüne geç
-                    setShowPresetLocations(false); // Presetleri kapat
-                    setSelectedClusterMoods(null); // Küme listesini kapat
+                    setView(ViewState.ADD); 
+                    setShowPresetLocations(false); 
+                    setSelectedClusterMoods(null); 
                 }}
                 className={`bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
             >
