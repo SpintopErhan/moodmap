@@ -1,7 +1,7 @@
 // src/components/MoodFeed.tsx
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Mood } from '@/types/app';
-import { X, MapPin } from 'lucide-react';
+import { X, MapPin } from 'lucide-react'; 
 
 interface MoodFeedProps {
   moods: Mood[];
@@ -21,12 +21,12 @@ const formatTimestamp = (timestamp: number): string => {
   return `${day}.${month}.${year} ${hours}:${minutes}`;
 };
 
-export const MoodFeed: React.FC<MoodFeedProps> = ({
-  moods,
-  onCloseRequest,
-  hideHeader = false,
-  hideLocationDetails = false,
-}) => {
+export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideHeader = false, hideLocationDetails = false }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+  }, []);
+
   if (!moods || moods.length === 0) {
     return (
       <div className="p-4 bg-slate-800 rounded-lg shadow-xl flex flex-col items-center justify-center text-gray-400 h-full">
@@ -45,15 +45,22 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({
   }
 
   return (
-    <div className="relative w-full h-full bg-slate-800/80 rounded-lg shadow-xl flex flex-col overflow-hidden">
+    // Dış kutu rengi ve gölge
+    <div className="relative bg-slate-900 rounded-lg shadow-xl h-full flex flex-col overflow-hidden">
       {!hideHeader && (
-        <div className="flex items-center justify-between p-4 bg-slate-900 backdrop-blur-sm border-b border-slate-700 shrink-0">
-          <h2 className="text-xl font-bold text-purple-300">Recent Vibes</h2>
+        // Başlık çubuğu rengi ve kenarlık
+        <div className="flex justify-between items-center p-4 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 shrink-0">
+          <h2 className="text-xl font-bold text-purple-300">
+            Recent Vibes
+            <span className="ml-2 text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full">
+                {moods.length}
+            </span>
+          </h2>
           {onCloseRequest && (
             <button
               onClick={onCloseRequest}
-              className="p-2 rounded-full hover:bg-slate-600 text-slate-300 transition-colors"
-              aria-label="Close"
+              className="p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+              title="Close list"
             >
               <X size={20} />
             </button>
@@ -61,29 +68,38 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2"> 
+      {/* Kaydırılabilir alan ve kartlar arası boşluk */}
+      <div 
+        ref={scrollRef}
+        className="overflow-y-auto custom-scrollbar flex-1 p-2 space-y-2" 
+        onWheel={handleWheel}
+        style={{ touchAction: 'pan-y' }}
+      >
         {moods.map((mood) => (
-          <div
-            key={mood.id}
-            className="flex items-center gap-4 bg-slate-800/80 rounded-lg p-3 shadow-md border border-slate-700" 
-          >
-            <div className="text-4xl shrink-0">{mood.emoji}</div>
-            <div className="flex flex-col flex-1">
+          // Her bir mood kartı stili
+          <div key={mood.id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 flex items-start gap-3"> {/* gap-3 artırıldı */}
+            {/* Emoji kapsayıcı stili */}
+            <div className="text-3xl bg-slate-700/30 w-12 h-12 flex items-center justify-center rounded-full shrink-0"> {/* emoji boyutu ve kapsayıcı boyutu ayarlandı */}
+              {mood.emoji}
+            </div>
+            {/* Metin içeriğini sarmalayan div, min-w-0 ve flex-1 ile truncation sağlar */}
+            <div className="flex-1 min-w-0 flex flex-col"> 
+              {/* YENİ SIRALAMA */}
               {/* 1. Mood Text (Status Text) */}
-              {mood.text && <p className="text-slate-200">{mood.text}</p>} 
+              {mood.text && <p className="text-slate-200 text-sm break-words">{mood.text}</p>} {/* text-sm ve break-words eklendi */}
               
-              {/* 2. Username - YENİ: truncate sınıfı eklendi */}
-              <p className={`font-semibold text-purple-300 ${mood.text ? 'mt-2' : ''} truncate`}>@{mood.username}</p> 
+              {/* 2. Username */}
+              <p className={`font-semibold text-purple-300 text-sm truncate ${mood.text ? 'mt-2' : ''}`}>@{mood.username}</p> {/* text-sm ve truncate eklendi */}
               
               {/* 3. Zaman Damgası */}
-              <p className="text-xs text-gray-500 mt-0.5">{formatTimestamp(mood.timestamp)}</p> 
+              <p className="text-xs text-gray-500 mt-0.5">{formatTimestamp(mood.timestamp)}</p> {/* text-xs ve renk ayarlandı */}
               
               {/* 4. Konum Bilgisi */}
-              {!hideLocationDetails && mood.locationLabel && (
-                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1 truncate"> {/* Konum etiketine de truncate eklenebilir */}
-                  <MapPin size={14} className="text-purple-400" />
-                  {mood.locationLabel}
-                </p>
+              {!hideLocationDetails && mood.locationLabel && ( 
+                <div className="flex items-center gap-1 text-gray-500 text-xs mt-1"> {/* text-xs ve renk ayarlandı */}
+                  <MapPin size={12} className="shrink-0" /> {/* Konum ikonu */}
+                  <span className="truncate">{mood.locationLabel}</span> {/* Konum bilgisi */}
+                </div>
               )}
             </div>
           </div>
