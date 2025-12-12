@@ -69,20 +69,18 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({
           >
             <div className="text-4xl shrink-0">{mood.emoji}</div>
             <div className="flex flex-col flex-1">
-              {/* YENİ SIRALAMA */}
               {/* 1. Mood Text (Status Text) */}
               {mood.text && <p className="text-slate-200">{mood.text}</p>} 
               
-              {/* 2. Username */}
-              {/* Eğer mood.text varsa, username'e üstten biraz boşluk ver */}
-              <p className={`font-semibold text-purple-300 ${mood.text ? 'mt-2' : ''}`}>@{mood.username}</p> 
+              {/* 2. Username - YENİ: truncate sınıfı eklendi */}
+              <p className={`font-semibold text-purple-300 ${mood.text ? 'mt-2' : ''} truncate`}>@{mood.username}</p> 
               
               {/* 3. Zaman Damgası */}
               <p className="text-xs text-gray-500 mt-0.5">{formatTimestamp(mood.timestamp)}</p> 
               
               {/* 4. Konum Bilgisi */}
               {!hideLocationDetails && mood.locationLabel && (
-                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1"> 
+                <p className="text-sm text-gray-500 flex items-center gap-1 mt-1 truncate"> {/* Konum etiketine de truncate eklenebilir */}
                   <MapPin size={14} className="text-purple-400" />
                   {mood.locationLabel}
                 </p>
