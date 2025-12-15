@@ -601,17 +601,19 @@ export default function Home() {
 
   const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
 
-  // BAŞLANGIÇ YÜKLEME EKRANI DEĞİŞİKLİĞİ BURADA YAPILDI
+  // Başlangıç yükleme ekranı
   if (status === "loading" || !isInitialLoadComplete || view === null) {
     return (
       <main 
+        // DEĞİŞİKLİK 1: Yükleme ekranı yüksekliği 100dvh olarak ayarlandı ve arka plan resim özellikleri eklendi.
         style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
-        className="relative flex h-screen w-full flex-col items-end justify-center bg-cover bg-center text-white overflow-hidden" 
+        className="relative flex h-[100dvh] w-full flex-col items-end justify-center bg-cover bg-center bg-no-repeat text-white overflow-hidden" 
       >
         {/* "Loading Farcaster MiniApp..." metni artık resmin içinde, bu yüzden kaldırıldı */}
         {/* <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> */}
         <div className="absolute bottom-4 w-full text-center"> 
-          <p className="text-lg text-gray-200 animate-pulse">Initializing data and location...</p> 
+          {/* DEĞİŞİKLİK 2: Metin rengi #78787B olarak değiştirildi. */}
+          <p className="text-lg text-[#78787B] animate-pulse">Initializing data and location...</p> 
         </div>
       </main>
     );
