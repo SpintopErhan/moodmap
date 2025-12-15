@@ -452,19 +452,20 @@ export default function Home() {
             // YENİ: Farcaster'a cast atma kontrolü
             if (sendCast && user?.fid) { // Sadece onay kutusu işaretliyse VE Farcaster kullanıcısıysa cast at
                 try {
+                    // Cast içeriği değiştirildi
                     const castContent = moodToPost.text
-                        ? `${moodToPost.emoji} ${moodToPost.text} at ${moodToPost.locationLabel || "a location"}`
-                        : `${moodToPost.emoji} at ${moodToPost.locationLabel || "a location"}`;
+                        ? `${moodToPost.text} ${moodToPost.emoji} via MoodMap`
+                        : `${moodToPost.emoji} via MoodMap`;
                     await composeCast(castContent);
                     console.log("Mood successfully cast to Farcaster.");
-                } catch (castErr: unknown) { // 'any' -> 'unknown' olarak değiştirildi
+                } catch (castErr: unknown) { 
                     console.error("Error sharing mood on Farcaster during add:", castErr);
                     setCastError(`Failed to share on Farcaster: ${castErr instanceof Error ? castErr.message : "Unknown error"}. You can try again later.`);
                 }
             }
         }
 
-    } catch (unexpectedError: unknown) { // 'any' -> 'unknown' olarak değiştirildi
+    } catch (unexpectedError: unknown) { 
         console.error("An unexpected error occurred during Supabase operation:", unexpectedError);
         setCastError(`An unexpected database error occurred: ${unexpectedError instanceof Error ? unexpectedError.message : "Unknown error"}.`);
     } finally {
@@ -586,7 +587,7 @@ export default function Home() {
     }
     setShowPresetLocations(prev => !prev);
     setSelectedClusterMoods(null); 
-  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); // setShowPresetLocations kaldırıldı
+  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); 
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
     const targetCoords = preset.coords; 
