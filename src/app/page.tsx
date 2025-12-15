@@ -11,14 +11,11 @@ import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
 
+// DEĞİŞİKLİK: Map bileşeni kendi yükleme ekranını yönetmediği için,
+// ana uygulama yükleme ekranı (page.tsx) tarafından beklenmesi gerekiyor.
+// Artık burada bir "loading" fallback'ine ihtiyacımız yok, çünkü tüm yükleme durumunu page.tsx yönetecek.
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
-  // DEĞİŞİKLİK: Map bileşeni kendi yükleme ekranını yönettiği için buradaki fallback daha minimalist hale getirildi.
-  loading: () => (
-    <div className="flex items-center justify-center bg-slate-800 rounded-lg shadow-xl h-full w-full">
-      <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  ),
 });
 
 const MAX_MOOD_TEXT_LENGTH = 48;
@@ -72,8 +69,11 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
   };
 };
 
+// Sabit bir değer olduğu için useMemo dışına taşındı.
+const DEFAULT_ZOOM_LEVEL = 14;
+
 export default function Home() {
-  const { user, status, error, composeCast } = useFarcasterMiniApp(); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { user, status, error, composeCast } = useFarcasterMiniApp(); 
 
   const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
@@ -83,7 +83,7 @@ export default function Home() {
     animate: boolean,
     purpose: 'userLocation' | 'presetLocation' 
   } | null>(null);
-  const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [lastLocallyPostedMood, setLastLocallyPostedMood] = useState<Mood | null>(null); 
 
   const [isMapCenteredOnUserLocation, setIsMapCenteredOnUserLocation] = useState(false);
   
@@ -104,15 +104,16 @@ export default function Home() {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
-  const defaultZoomLevel = useMemo(() => 14, []);
-
   const [geolocationFunctions, setGeolocationFunctions] = useState<{
     reverseGeocode: (lat: number, lng: number) => Promise<string | null>;
     forwardGeocode: (address: string) => Promise<[number, number] | null>;
   } | null>(null);
 
   const [anonFid, setAnonFid] = useState<number | null>(null);
-  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false); 
+  // DEĞİŞİKLİK: isInitialLoadComplete yerine isDataLoaded kullanıldı
+  const [isDataLoaded, setIsDataLoaded] = useState(false); 
+  // DEĞİŞİKLİK: Haritanın hazır olup olmadığını kontrol eden yeni state
+  const [isMapReady, setIsMapReady] = useState(false); 
 
 
   // Geolocation ve Anonim FID yükleme
@@ -164,10 +165,13 @@ export default function Home() {
   // YENİ useEffect: Uygulamanın ilk yüklenmesinde mood'ları çek ve başlangıç görünümünü ayarla
   useEffect(() => {
     const initializeAppData = async () => {
+      // DEĞİŞİKLİK: Farcaster status loading ise veya anonFid henüz belirlenmemişse bekle
       if (status === 'loading' || anonFid === null) { 
         console.log("[page.tsx] Waiting for Farcaster status to be loaded or anonFid to be set...", { status, anonFid });
-        return;
+        return; // SDK veya anonFid hazır değilse, tekrar çalışmak için bekler.
       }
+      
+      console.log("[page.tsx] Starting initializeAppData logic.");
 
       let effectiveFid: number | null = null;
       if (user?.fid && user.fid > 0) { 
@@ -184,7 +188,7 @@ export default function Home() {
       if (effectiveFid === null) {
           console.error("[page.tsx] Critical: effectiveFid is null after determination logic. Setting error.");
           setCastError("Critical error: User ID is missing for database operations.");
-          setIsInitialLoadComplete(true); 
+          setIsDataLoaded(true); // Hata olsa bile veri yükleme aşamasını tamamla
           setView(ViewState.ADD); 
           return;
       }
@@ -209,13 +213,13 @@ export default function Home() {
         setUserLastMoodLocation({ 
             name: userAppMood.locationLabel || "Unknown Location",
             coords: [userAppMood.location.lat, userAppMood.location.lng],
-            zoom: defaultZoomLevel, 
+            zoom: DEFAULT_ZOOM_LEVEL, 
             popupText: userAppMood.text || userAppMood.emoji,
             locationType: 'user' 
         });
         setMapRecenterTrigger({
             coords: [userAppMood.location.lat, userAppMood.location.lng],
-            zoom: defaultZoomLevel,
+            zoom: DEFAULT_ZOOM_LEVEL, 
             animate: false,
             purpose: 'userLocation',
         });
@@ -229,12 +233,13 @@ export default function Home() {
       const allMoods = await fetchAllMoods();
       setMoods(allMoods);
 
-      setIsInitialLoadComplete(true); 
-      console.log("[page.tsx] Initial app data loading complete.");
+      // DEĞİŞİKLİK: Verilerin yüklendiğini işaretle
+      setIsDataLoaded(true); 
+      console.log("[page.tsx] Initial app data loading complete (excluding map readiness).");
     };
 
     initializeAppData();
-  }, [status, anonFid, user?.fid, fetchAllMoods, defaultZoomLevel, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]);
+  }, [status, anonFid, user?.fid, fetchAllMoods, DEFAULT_ZOOM_LEVEL, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]);
 
 
   const handleCloseAllPanels = useCallback(() => {
@@ -301,12 +306,12 @@ export default function Home() {
         timestamp: locationData.timestamp,
         accuracy: locationData.accuracy,
         locationLabel: finalLocationLabel, 
-        zoom: locationData.zoom ?? defaultZoomLevel,
+        zoom: locationData.zoom ?? DEFAULT_ZOOM_LEVEL, 
         locationType: locationData.locationType,
       });
 
       setIsMapCenteredOnUserLocation(true); 
-    }, [geolocationFunctions, setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
+    }, [geolocationFunctions, setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, DEFAULT_ZOOM_LEVEL]);
 
 
   const handleAddMood = useCallback(async () => {
@@ -432,13 +437,13 @@ export default function Home() {
         setUserLastMoodLocation({
             name: moodToPost.locationLabel || "Unknown Location",
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
+            zoom: currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL, 
             popupText: moodToPost.text || moodToPost.emoji,
             locationType: currentDeterminedLocationData?.locationType || 'fallback'
         });
         setMapRecenterTrigger({
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: currentDeterminedLocationData?.zoom || defaultZoomLevel,
+            zoom: currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL, 
             animate: false,
             purpose: 'userLocation', 
         });
@@ -455,7 +460,7 @@ export default function Home() {
     anonFid, 
     user?.username,
     user?.displayName, 
-    defaultZoomLevel, 
+    DEFAULT_ZOOM_LEVEL, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods 
@@ -533,7 +538,7 @@ export default function Home() {
     if (targetLocationData) {
         setMapRecenterTrigger({
             coords: targetLocationData.coords,
-            zoom: targetLocationData.zoom || defaultZoomLevel,
+            zoom: targetLocationData.zoom || DEFAULT_ZOOM_LEVEL, 
             animate: true,
             purpose: 'userLocation', 
         });
@@ -541,7 +546,7 @@ export default function Home() {
     } else {
         alert("Location information is not yet determined.");
     }
-  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger, setIsMapCenteredOnUserLocation, defaultZoomLevel]);
+  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger, setIsMapCenteredOnUserLocation, DEFAULT_ZOOM_LEVEL]);
 
   const handleRecenterToUserLocation = useCallback(() => {
     handleCloseAllPanels(); 
@@ -601,24 +606,68 @@ export default function Home() {
 
   const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
 
-  // Başlangıç yükleme ekranı
-  if (status === "loading" || !isInitialLoadComplete || view === null) {
+  // DEĞİŞİKLİK: Uygulamanın genel yükleme durumunu buradan yönetiyoruz.
+  // status === "loading": Farcaster MiniApp SDK'sı yükleniyor.
+  // !isDataLoaded: Uygulamanın kendi verileri (mood'lar, user mood, anonFid) yükleniyor.
+  // !isMapReady: Harita component'i konumunu belirleyip hazır hale geliyor.
+  const isOverallLoading = status === "loading" || !isDataLoaded || !isMapReady;
+
+  // Hangi yükleme mesajının gösterileceğini belirle
+  let loadingMessage = "";
+  if (status === "loading") {
+      loadingMessage = "Initializing Farcaster SDK..."; 
+  } else if (!isDataLoaded) {
+      loadingMessage = "Initializing data and location...";
+  } else if (!isMapReady) { // isDataLoaded true ama isMapReady false ise harita yükleniyor mesajı gösterilir
+      loadingMessage = "Initializing map...";
+  }
+  
+  if (isOverallLoading) {
     return (
       <main 
-        // DEĞİŞİKLİK 1: Yükleme ekranı yüksekliği 100dvh olarak ayarlandı ve arka plan resim özellikleri eklendi.
         style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
         className="relative flex h-[100dvh] w-full flex-col items-end justify-center bg-cover bg-center bg-no-repeat text-white overflow-hidden" 
       >
-        {/* "Loading Farcaster MiniApp..." metni artık resmin içinde, bu yüzden kaldırıldı */}
-        {/* <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> */}
-        <div className="absolute bottom-4 w-full text-center"> 
-          {/* DEĞİŞİKLİK 2: Metin rengi #78787B olarak değiştirildi. */}
-          <p className="text-lg text-[#78787B] animate-pulse">Initializing data and location...</p> 
+        <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600"></div>
         </div>
+        <div className="absolute bottom-4 w-full text-center"> 
+          <p className="text-lg text-[#78787B] animate-pulse">
+            {loadingMessage}
+          </p> 
+        </div>
+
+        {/*
+          KRİTİK DEĞİŞİKLİK:
+          isDataLoaded true olduğunda (yani uygulama verileri yüklendiğinde),
+          fakat harita henüz hazır değilken (!isMapReady), DynamicMap'i
+          gizli bir şekilde render et. Bu, Map.tsx'in mount edilmesini
+          ve kendi konum belirleme işlemlerini başlatmasını sağlar,
+          böylece onMapReady callback'i çağrılabilir.
+        */}
+        {isDataLoaded && !isMapReady && (
+            <div className="absolute inset-0 opacity-0 pointer-events-none">
+                <DynamicMap
+                    moods={moods}
+                    onInitialLocationDetermined={handleInitialLocationDetermined}
+                    height="100%"
+                    recenterTrigger={mapRecenterTrigger}
+                    onRecenterComplete={handleMapRecenterComplete}
+                    onMapMove={handleMapUserMove}
+                    onClusterClick={handleClusterMarkerClick}
+                    onMapClick={handleCloseAllPanels} 
+                    onMapReady={() => {
+                        console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true).");
+                        setIsMapReady(true);
+                    }}
+                />
+            </div>
+        )}
       </main>
     );
   }
 
+  // SDK hata verirse bu ekran gösterilir
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -629,6 +678,7 @@ export default function Home() {
     );
   }
 
+  // DEĞİŞİKLİK: isOverallLoading false olduğunda, yani her şey yüklendiğinde ana UI'yi göster
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
@@ -641,7 +691,7 @@ export default function Home() {
       )}
 
       {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
-      {/* DEĞİŞİKLİK 1: Sadece ViewState.LIST dışındaysa bu üst çubuğu göster */}
+      {/* Sadece ViewState.LIST dışındaysa bu üst çubuğu göster */}
       {view !== ViewState.LIST && (
         <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
           {/* Top-left container (user info + recent mood) */}
@@ -665,9 +715,6 @@ export default function Home() {
               </div>
 
               {/* 2. ROW: Kullanıcının son mod'u (emoji ve not) */}
-              {/* Daha önce hem LIST hem CLUSTER_LIST'te gizliydi. Şimdi, üst çubuk sadece LIST'te gizlendiği için, 
-                  buradaki koşulu sadece lastLocallyPostedMood olup olmadığına bakarak basitleştiriyoruz.
-                  Bu sayede CLUSTER_LIST açıkken de kullanıcının son modu görünecek. */}
               {lastLocallyPostedMood && (
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto max-w-[calc(100vw-32px)]">
                       <span className="text-2xl">{lastLocallyPostedMood.emoji}</span>
@@ -685,6 +732,7 @@ export default function Home() {
       {/* Main Content Area */}
       <div className="flex-1 relative z-0">
         <div className="absolute inset-0">
+            {/* DEĞİŞİKLİK: Map component'i artık sadece !isOverallLoading olduğunda render ediliyor */}
             <DynamicMap
                 moods={moods}
                 onInitialLocationDetermined={handleInitialLocationDetermined}
@@ -694,14 +742,16 @@ export default function Home() {
                 onMapMove={handleMapUserMove}
                 onClusterClick={handleClusterMarkerClick}
                 onMapClick={handleCloseAllPanels} 
+                onMapReady={() => {
+                    console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true). (This should only be called once when component is first mounted)")
+                    setIsMapReady(true)
+                }} 
             />
         </div>
 
-        {/* List View Overlay - YENİ Z-INDEX */}
+        {/* List View Overlay */}
         { view === ViewState.LIST && (
             <div
-                // DEĞİŞİKLİK 2: Üst çubuk gizlendiği için pt-20 değerini kaldırıldı.
-                // MoodFeed artık en üstten başlayacak. px-2 ve pb-20 korunarak yatay boşluk ve alt navigasyon çubuğu boşluğu sağlanır.
                 className={`absolute inset-0 z-[65] px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300`}
                 onClick={handleCloseAllPanels} 
             >
@@ -717,7 +767,7 @@ export default function Home() {
             </div>
         )}
 
-         {/* Küme Listesi Yan Paneli - YENİ Z-INDEX */}
+         {/* Küme Listesi Yan Paneli */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
