@@ -13,9 +13,10 @@ import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react';
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
+  // DEĞİŞİKLİK: Map bileşeni kendi yükleme ekranını yönettiği için buradaki fallback daha minimalist hale getirildi.
   loading: () => (
     <div className="flex items-center justify-center bg-slate-800 rounded-lg shadow-xl h-full w-full">
-      <p className="text-gray-400">Loading map...</p>
+      <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
     </div>
   ),
 });
@@ -600,12 +601,18 @@ export default function Home() {
 
   const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
 
-  // Başlangıç yükleme ekranı
+  // BAŞLANGIÇ YÜKLEME EKRANI DEĞİŞİKLİĞİ BURADA YAPILDI
   if (status === "loading" || !isInitialLoadComplete || view === null) {
     return (
-      <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
-        <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p>
-        <p className="text-lg text-gray-400 mt-2">Initializing data and location...</p>
+      <main 
+        style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
+        className="relative flex h-screen w-full flex-col items-end justify-center bg-cover bg-center text-white overflow-hidden" 
+      >
+        {/* "Loading Farcaster MiniApp..." metni artık resmin içinde, bu yüzden kaldırıldı */}
+        {/* <p className="text-2xl animate-pulse">Loading Farcaster MiniApp...</p> */}
+        <div className="absolute bottom-4 w-full text-center"> 
+          <p className="text-lg text-gray-200 animate-pulse">Initializing data and location...</p> 
+        </div>
       </main>
     );
   }
