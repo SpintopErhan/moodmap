@@ -242,7 +242,6 @@ export default function Home() {
     anonFid, 
     user?.fid, 
     fetchAllMoods, // useCallback olduğu için stabil
-    // Setter fonksiyonları (React'in garantisi olsa da, ESLint uyumluluğu ve olası yan etkiler için eklenmesi daha güvenli)
     setCastError, 
     setLastLocallyPostedMood, 
     setUserLastMoodLocation, 
@@ -250,8 +249,8 @@ export default function Home() {
     setView, 
     setIsDataLoaded, 
     setMoods,
-    setSendCast, // YENİ: Bağımlılık dizisine eklendi
-    DEFAULT_ZOOM_LEVEL 
+    setSendCast, 
+    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
   ]);
 
 
@@ -265,6 +264,7 @@ export default function Home() {
     
     setView(ViewState.MAP); 
     setSelectedClusterMoods(null); 
+    // setShowPresetLocations kaldırıldı, çünkü bir state setter ve bağımlılık olarak eklenmesine gerek yok.
     setShowPresetLocations(false); 
     setSelectedEmoji(MOOD_OPTIONS[0].emoji); 
     setStatusText(''); 
@@ -272,7 +272,7 @@ export default function Home() {
     setCastError(null); 
     setSendCast(true); // YENİ: Paneller kapanırken varsayılan olarak true yap
     console.log("[page.tsx] All panels closed and states reset to map view.");
-  }, [view, setSelectedClusterMoods, setShowPresetLocations, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast]);
+  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast]);
 
 
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
@@ -325,7 +325,12 @@ export default function Home() {
       });
 
       setIsMapCenteredOnUserLocation(true); 
-    }, [geolocationFunctions, setCurrentDeterminedLocationData, setIsMapCenteredOnUserLocation, DEFAULT_ZOOM_LEVEL]);
+    }, [
+      geolocationFunctions, 
+      setCurrentDeterminedLocationData, 
+      setIsMapCenteredOnUserLocation, 
+      // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
+    ]);
 
 
   const handleAddMood = useCallback(async () => {
@@ -452,16 +457,16 @@ export default function Home() {
                         : `${moodToPost.emoji} at ${moodToPost.locationLabel || "a location"}`;
                     await composeCast(castContent);
                     console.log("Mood successfully cast to Farcaster.");
-                } catch (castErr: any) { // castErr tipini any olarak belirtmek daha güvenli
+                } catch (castErr: unknown) { // 'any' -> 'unknown' olarak değiştirildi
                     console.error("Error sharing mood on Farcaster during add:", castErr);
-                    setCastError(`Failed to share on Farcaster: ${castErr.message || "Unknown error"}. You can try again later.`);
+                    setCastError(`Failed to share on Farcaster: ${castErr instanceof Error ? castErr.message : "Unknown error"}. You can try again later.`);
                 }
             }
         }
 
-    } catch (unexpectedError: any) { // unexpectedError tipini any olarak belirtmek daha güvenli
+    } catch (unexpectedError: unknown) { // 'any' -> 'unknown' olarak değiştirildi
         console.error("An unexpected error occurred during Supabase operation:", unexpectedError);
-        setCastError(`An unexpected database error occurred: ${unexpectedError.message || "Unknown error"}.`);
+        setCastError(`An unexpected database error occurred: ${unexpectedError instanceof Error ? unexpectedError.message : "Unknown error"}.`);
     } finally {
         setUserLastMoodLocation({
             name: moodToPost.locationLabel || "Unknown Location",
@@ -489,12 +494,12 @@ export default function Home() {
     anonFid, 
     user?.username,
     user?.displayName, 
-    DEFAULT_ZOOM_LEVEL, 
+    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods,
-    sendCast, // YENİ: Bağımlılık dizisine eklendi
-    composeCast // YENİ: Bağımlılık dizisine eklendi
+    sendCast, 
+    composeCast 
   ]); 
 
   // handleCastLastMoodToFarcaster artık bu senaryoda kullanılmıyor, kaldırılabilir veya gelecekteki bir özellik için saklanabilir.
@@ -556,7 +561,13 @@ export default function Home() {
     } else {
         alert("Location information is not yet determined.");
     }
-  }, [userLastMoodLocation, currentDeterminedLocationData, setMapRecenterTrigger, setIsMapCenteredOnUserLocation, DEFAULT_ZOOM_LEVEL]);
+  }, [
+    userLastMoodLocation, 
+    currentDeterminedLocationData, 
+    setMapRecenterTrigger, 
+    setIsMapCenteredOnUserLocation, 
+    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
+  ]);
 
   const handleRecenterToUserLocation = useCallback(() => {
     handleCloseAllPanels(); 
@@ -575,8 +586,7 @@ export default function Home() {
     }
     setShowPresetLocations(prev => !prev);
     setSelectedClusterMoods(null); 
-  }, [view, setShowPresetLocations, setSelectedClusterMoods, handleCloseAllPanels]);
-
+  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); // setShowPresetLocations kaldırıldı
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
     const targetCoords = preset.coords; 
