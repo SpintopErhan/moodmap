@@ -185,7 +185,7 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
 
 interface MapUserInteractionWatcherProps {
   onMapMove?: () => void; 
-  onMapClick?: () => void; // <<< Map tıklama olayını yakalamak için prop eklendi
+  onMapClick?: () => void; 
 }
 
 const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ onMapMove, onMapClick }) => {
@@ -200,7 +200,7 @@ const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ o
     },
     click: (event) => { 
       console.log("[MapUserInteractionWatcher] Map clicked.", event);
-      onMapClick?.(); // <<< Harita tıklama olayı dinleyicisi
+      onMapClick?.(); 
     }
   });
   return null;
@@ -230,6 +230,27 @@ const MapTouchFixer: React.FC = () => {
 };
 
 
+// YENİ BİLEŞEN: Harita görünür hale geldiğinde boyutunu güncelleyen
+function MapVisibilityUpdater({ isMapVisible }: { isMapVisible?: boolean }) {
+  const map = useMap(); // Leaflet harita örneğini al
+
+  useEffect(() => {
+    if (isMapVisible && map) {
+      // Harita görünür hale geldiğinde boyutunu yeniden hesapla
+      // setTimeout kullanmak, DOM'un tam olarak güncellenmesini beklemek için küçük bir gecikme sağlar.
+      const timeout = setTimeout(() => {
+        map.invalidateSize({ pan: false }); // `pan: false` haritanın merkezini değiştirmemesi için
+        console.log("[Map.tsx -> MapVisibilityUpdater] map.invalidateSize() called.");
+      }, 100); // Küçük bir gecikme ekleyelim
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isMapVisible, map]);
+
+  return null;
+}
+
+
 interface MapComponentProps {
   height?: string;
   moods: Mood[];
@@ -239,7 +260,8 @@ interface MapComponentProps {
   onMapMove?: () => void;
   onClusterClick?: (moods: Mood[]) => void;
   onMapClick?: () => void; 
-  onMapReady?: () => void; // <<< YENİ: Harita hazır olduğunda çağrılacak callback
+  onMapReady?: () => void; 
+  isMapVisible?: boolean; // <<< YENİ: Haritanın ana kapsayıcısının görünürlük durumu
 }
 
 export default function Map({
@@ -251,7 +273,8 @@ export default function Map({
   onMapMove,
   onClusterClick,
   onMapClick, 
-  onMapReady, // <<< Yeni prop'u burada da destructre ediyoruz
+  onMapReady, 
+  isMapVisible, // <<< isMapVisible prop'u
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -271,9 +294,9 @@ export default function Map({
       setHasLocationBeenSet(true);
       console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`);
       onInitialLocationDetermined?.(location);
-      onMapReady?.(); // <<< Harita hazır olduğunda page.tsx'i bilgilendir!
+      // onMapReady buradan kaldırıldı, MapContainer'ın whenCreated callback'ine taşındı.
     }
-  }, [hasLocationBeenSet, onInitialLocationDetermined, onMapReady]); // onMapReady bağımlılıklara eklendi
+  }, [hasLocationBeenSet, onInitialLocationDetermined]);
 
 
   useEffect(() => {
@@ -373,6 +396,10 @@ export default function Map({
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
+        whenReady={() => { // <<< YENİ: Harita objesi oluşturulduğunda onMapReady'yi çağır
+            onMapReady?.();
+            console.log("[Map.tsx] MapContainer created, onMapReady fired.");
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -413,6 +440,7 @@ export default function Map({
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
         {(onMapMove || onMapClick) && <MapUserInteractionWatcher onMapMove={onMapMove} onMapClick={onMapClick} />} 
         <MapTouchFixer />
+        <MapVisibilityUpdater isMapVisible={isMapVisible} /> {/* YENİ BİLEŞENİ BURADA EKLEDİK */}
         
       </MapContainer>
     </div>

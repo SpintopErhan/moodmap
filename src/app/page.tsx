@@ -138,7 +138,7 @@ export default function Home() {
   const fetchAllMoods = useCallback(async () => {
     console.log("[page.tsx] Fetching all moods from Supabase...");
     
-    // DEĞİŞİKLİK BAŞLANGICI: Sadece son 3 günün moodlarını çekmek için filtre eklendi
+    // Sadece son 3 günün moodlarını çekmek için filtre eklendi
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3); // 3 gün öncesinin tarihini hesapla
     const threeDaysAgoISO = threeDaysAgo.toISOString(); // ISO formatına çevir
@@ -147,7 +147,6 @@ export default function Home() {
       .from('moods')
       .select('*')
       .gte('mood_date', threeDaysAgoISO); // mood_date sütununda 3 gün öncesine eşit veya daha yeni olanları getir
-    // DEĞİŞİKLİK SONU
 
     if (error) {
       console.error("Error fetching all moods:", error);
@@ -162,6 +161,8 @@ export default function Home() {
     return [];
   }, []);
 
+  // initializeAppData için bağımlılık dizisi güncellendi.
+  // İçinde kullanılan tüm state setter'lar ve DEFAULT_ZOOM_LEVEL (sabit olmasına rağmen) eklendi.
   useEffect(() => {
     const initializeAppData = async () => {
       if (status === 'loading' || anonFid === null) { 
@@ -233,7 +234,21 @@ export default function Home() {
     };
 
     initializeAppData();
-  }, [status, anonFid, user?.fid, fetchAllMoods, DEFAULT_ZOOM_LEVEL, setCastError, setLastLocallyPostedMood, setUserLastMoodLocation, setMapRecenterTrigger]);
+  }, [
+    status, 
+    anonFid, 
+    user?.fid, 
+    fetchAllMoods, // useCallback olduğu için stabil
+    // Setter fonksiyonları (React'in garantisi olsa da, ESLint uyumluluğu ve olası yan etkiler için eklenmesi daha güvenli)
+    setCastError, 
+    setLastLocallyPostedMood, 
+    setUserLastMoodLocation, 
+    setMapRecenterTrigger, 
+    setView, 
+    setIsDataLoaded, 
+    setMoods,
+    DEFAULT_ZOOM_LEVEL 
+  ]);
 
 
   const handleCloseAllPanels = useCallback(() => {
@@ -605,64 +620,13 @@ export default function Home() {
   let loadingMessage = "";
   if (status === "loading") {
       loadingMessage = "Initializing Farcaster SDK..."; 
-  } else if (!isDataLoaded) {
+  } else if (!isDataLoaded) { 
       loadingMessage = "Initializing data and location...";
   } else if (!isMapReady) { 
       loadingMessage = "Initializing map...";
   }
   
-  if (isOverallLoading) {
-    return (
-      <main 
-        style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
-        className="relative flex h-[100dvh] w-full flex-col items-end justify-center bg-cover bg-center bg-no-repeat text-white overflow-hidden" 
-      >
-        {/* Ortadaki spinner kaldırıldı. */}
-        {/* <div className="absolute inset-0 flex items-center justify-center">
-            <div className="
-              animate-spin rounded-full h-16 w-16 
-              border-t-4 border-b-4 
-              border-indigo-400 
-              transform -translate-y-8 
-            "></div> 
-        </div> */}
-        {/* Alt ortada durum mesajı */}
-        <div className="absolute bottom-4 w-full text-center"> 
-          <p className="text-lg text-[#78787B] animate-pulse">
-            {loadingMessage}
-          </p> 
-        </div>
-
-        {/*
-          KRİTİK DEĞİŞİKLİK:
-          isDataLoaded true olduğunda (yani uygulama verileri yüklendiğinde),
-          fakat harita henüz hazır değilken (!isMapReady), DynamicMap'i
-          gizli bir şekilde render et. Bu, Map.tsx'in mount edilmesini
-          ve kendi konum belirleme işlemlerini başlatmasını sağlar,
-          böylece onMapReady callback'i çağrılabilir.
-        */}
-        {isDataLoaded && !isMapReady && (
-            <div className="absolute inset-0 opacity-0 pointer-events-none">
-                <DynamicMap
-                    moods={moods}
-                    onInitialLocationDetermined={handleInitialLocationDetermined}
-                    height="100%"
-                    recenterTrigger={mapRecenterTrigger}
-                    onRecenterComplete={handleMapRecenterComplete}
-                    onMapMove={handleMapUserMove}
-                    onClusterClick={handleClusterMarkerClick}
-                    onMapClick={handleCloseAllPanels} 
-                    onMapReady={() => {
-                        console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true).");
-                        setIsMapReady(true);
-                    }}
-                />
-            </div>
-        )}
-      </main>
-    );
-  }
-
+  // Farcaster SDK başlangıç hatası durumunda yükleme ekranını göstermeden hata ekranı döndür
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -685,7 +649,8 @@ export default function Home() {
       )}
 
       {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
-      {view !== ViewState.LIST && (
+      {/* Sadece MAP görünümündeyken Header'ı göster. Bu, diğer tüm view'lerde gizlenmesini sağlar. */}
+      {view === ViewState.MAP && (
         <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
           {/* Top-left container (user info + recent mood) */}
           <div className="flex flex-col items-start gap-2"> 
@@ -693,13 +658,13 @@ export default function Home() {
               <div className="flex items-center gap-2 pointer-events-auto">
                   {/* Kullanıcı adı kutusu */}
                   <div className="p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700">
-                      <p className="text-sm font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
+                      <p className="text-sm font-semibold text-purple-100 leading-tight">{user?.username || "anonymous"}</p>
                   </div>
                   {/* Konum Navigasyon Butonu */}
                   <button
                       onClick={handleRecenterToUserLocation}
                       disabled={isRecenterButtonDisabled} 
-                      className={`p-1 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
+                      className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
                           ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                       title="Recenter to your location or last mood location"
                   >
@@ -722,8 +687,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 relative z-0">
+      {/* Main Content Area - Harita burada her zaman render ediliyor, opacity ile kontrol ediliyor */}
+      <div className={`flex-1 relative z-0 transition-opacity duration-500 ${isOverallLoading ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}>
         <div className="absolute inset-0">
             <DynamicMap
                 moods={moods}
@@ -735,9 +700,15 @@ export default function Home() {
                 onClusterClick={handleClusterMarkerClick}
                 onMapClick={handleCloseAllPanels} 
                 onMapReady={() => {
-                    console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true). (This should only be called once when component is first mounted)")
-                    setIsMapReady(true)
+                    // Harita hazır olduğunda sadece bir kez isMapReady'yi true yap
+                    if (!isMapReady) {
+                        console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true).");
+                        setIsMapReady(true);
+                    } else {
+                        console.log("[page.tsx] DynamicMap was already ready (redundant onMapReady call or component re-render).");
+                    }
                 }} 
+                isMapVisible={!isOverallLoading} // YENİ EKLENEN PROP
             />
         </div>
 
@@ -763,7 +734,7 @@ export default function Home() {
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
-                onClick={handleCloseAllPanels} 
+                onClick={handleCloseAllPanels} // Bu paneli tıklayarak kapatmak için
             >
                 <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
@@ -924,6 +895,20 @@ export default function Home() {
 
         </div>
       </div>
+
+      {/* Loading Overlay (En üstte olmalı) */}
+      {isOverallLoading && (
+        <div 
+          style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
+          className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-cover bg-center bg-no-repeat text-white transition-opacity duration-500" 
+        >
+          <div className="absolute bottom-4 w-full text-center"> 
+            <p className="text-lg text-[#78787B] animate-pulse">
+              {loadingMessage}
+            </p> 
+          </div>
+        </div>
+      )}
     </div>
   );
 }
