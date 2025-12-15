@@ -18,6 +18,8 @@ interface UseFarcasterMiniAppResult {
 
 // addMiniApp çağrısının başarısız olduğunu gösteren tipik TypeError mesajını sabit olarak tanımlayalım
 const ADD_MINI_APP_FAILURE_TYPE_ERROR = "Cannot read properties of undefined (reading 'result')";
+// Uygulamanın kendi URL'sini bir sabit olarak tanımlayalım
+const APP_EMBED_URL = "https://moodmap-lake.vercel.app";
 
 export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
   const [user, setUser] = useState<FarcasterUser>(ANONYMOUS_USER);
@@ -61,17 +63,11 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
           if (addMiniAppErr instanceof TypeError && addMiniAppErr.message?.includes(ADD_MINI_APP_FAILURE_TYPE_ERROR)) {
             console.warn(
               "[FarcasterSDK] Uyarı: `addMiniApp` çağrısı başarısız oldu (Farcaster client dışında çalışıyor veya kullanıcı reddetti). Anonim olarak devam ediliyor.",
-              addMiniAppErr.message
+              addMiniAppErr instanceof Error ? addMiniAppErr.message : String(addMiniAppErr)
             );
-            // BU HATA KRİTİK DEĞİL. UYGULAMANIN DEVAM ETMESİNE İZİN VER.
-            // Bu uyarıyı UI'da göstermek istemediğimiz sürece setError çağırmayız.
           } else {
-            // Farklı veya daha kritik bir hata ise, bunu ele alalım ve belki de başlatma sürecini durduralım.
-            // Ancak şu anki senaryoda, biz sadece 'addMiniApp' hatalarının genel akışı bozmasını istemiyoruz.
-            // Bu bloğu değiştirmiyoruz, ama eğer bilinmeyen bir hata olursa, yine de bir uyarı log'u düşmek iyi.
+            // Farklı veya daha kritik bir hata ise, bunu ele alalım
             console.warn("[FarcasterSDK] Uyarı: `addMiniApp` bilinmeyen bir nedenle başarısız oldu. Uygulama devam edecek.", addMiniAppErr);
-            // Burada da `throw addMiniAppErr;` yapmıyoruz.
-            // Böylece ana try-catch bloğuna düşmüyoruz ve status "error" olmuyor.
           }
         }
 
@@ -113,7 +109,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
     };
 
     init();
-  }, []);
+  }, []); // Bağımlılık dizisi boş kalmalı, init sadece bir kez çalışmalı.
 
   const composeCast = useCallback(
     async (text: string, rawEmbeds: string[] = []) => {
@@ -128,17 +124,26 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         throw authError;
       }
 
-      let embedsForSDK: [] | [string] | [string, string] | undefined;
+      let finalEmbeds = [...rawEmbeds]; // Mevcut embed'leri kopyala
 
-      if (rawEmbeds.length === 1) {
-        embedsForSDK = [rawEmbeds[0]];
-      } else if (rawEmbeds.length >= 2) {
-        embedsForSDK = [rawEmbeds[0], rawEmbeds[1]];
-        if (rawEmbeds.length > 2) {
+      // Uygulama URL'sini ekle (eğer zaten yoksa)
+      // Bu kontrol, manuel olarak rawEmbeds'e eklense bile çiftlemeyi önler
+      if (!finalEmbeds.includes(APP_EMBED_URL)) {
+          // APP_EMBED_URL'i her zaman ilk embed olarak ekle
+          finalEmbeds.unshift(APP_EMBED_URL);
+      }
+
+      // Sadece ilk iki embed'i al (Farcaster'ın 2 embed limiti var)
+      let embedsForSDK: [] | [string] | [string, string] | undefined;
+      if (finalEmbeds.length === 0) {
+        embedsForSDK = undefined;
+      } else if (finalEmbeds.length === 1) {
+        embedsForSDK = [finalEmbeds[0]];
+      } else { // finalEmbeds.length >= 2
+        embedsForSDK = [finalEmbeds[0], finalEmbeds[1]];
+        if (finalEmbeds.length > 2) {
             console.warn("[FarcasterSDK] Uyarı: Farcaster API sadece ilk 2 embed'i destekler. Fazlası göz ardı edildi.");
         }
-      } else {
-        embedsForSDK = undefined;
       }
 
       try {
@@ -150,7 +155,7 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         throw err instanceof Error ? err : new Error(String(err));
       }
     },
-    [status, user.fid]
+    [status, user.fid] // Sadece `status` ve `user.fid` değiştiğinde yeniden oluşturulur
   );
 
   const memoizedSdkActions = useMemo(() => (status === "loaded" ? sdk.actions : null), [status]);
