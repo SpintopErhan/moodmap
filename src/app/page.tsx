@@ -50,6 +50,7 @@ interface SupabaseMood {
   emoji: string;
   user_note: string;
   mood_date: string; 
+  cast: boolean; // YENİ: Supabase'den çekilen 'cast' sütunu için
 }
 
 const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
@@ -91,6 +92,7 @@ export default function Home() {
   const [statusText, setStatusText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [castError, setCastError] = useState<string | null>(null); 
+  const [sendCast, setSendCast] = useState(true); // YENİ: Cast gönderme onay kutusunun durumu
 
   const [selectedClusterMoods, setSelectedClusterMoods] = useState<Mood[] | null>(null); 
 
@@ -145,7 +147,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from('moods')
-      .select('*')
+      .select('*, cast') // YENİ: cast sütununu da seçiyoruz
       .gte('mood_date', threeDaysAgoISO); // mood_date sütununda 3 gün öncesine eşit veya daha yeni olanları getir
 
     if (error) {
@@ -195,7 +197,7 @@ export default function Home() {
       console.log(`[page.tsx] Checking for user's mood with FID: ${effectiveFid}`);
       const { data: userMoodData, error: userMoodError } = await supabase
         .from('moods')
-        .select('*')
+        .select('*, cast') // YENİ: cast sütununu da çekiyoruz
         .eq('fid', effectiveFid)
         .single(); 
 
@@ -207,6 +209,7 @@ export default function Home() {
         console.log("[page.tsx] User's initial mood found:", userMoodData);
         const userAppMood = mapSupabaseMoodToAppMood(userMoodData);
         setLastLocallyPostedMood(userAppMood); 
+        setSendCast(userMoodData.cast); // YENİ: Kullanıcının son mood'undan cast durumunu al
         setUserLastMoodLocation({ 
             name: userAppMood.locationLabel || "Unknown Location",
             coords: [userAppMood.location.lat, userAppMood.location.lng],
@@ -247,6 +250,7 @@ export default function Home() {
     setView, 
     setIsDataLoaded, 
     setMoods,
+    setSendCast, // YENİ: Bağımlılık dizisine eklendi
     DEFAULT_ZOOM_LEVEL 
   ]);
 
@@ -266,8 +270,9 @@ export default function Home() {
     setStatusText(''); 
     setIsSubmitting(false); 
     setCastError(null); 
+    setSendCast(true); // YENİ: Paneller kapanırken varsayılan olarak true yap
     console.log("[page.tsx] All panels closed and states reset to map view.");
-  }, [view, setSelectedClusterMoods, setShowPresetLocations, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError]);
+  }, [view, setSelectedClusterMoods, setShowPresetLocations, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast]);
 
 
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
@@ -413,6 +418,7 @@ export default function Home() {
             emoji: moodToPost.emoji,
             user_note: moodToPost.text,
             mood_date: new Date(moodToPost.timestamp).toISOString(), 
+            cast: sendCast, // YENİ: `cast` sütunu eklendi
         };
 
         console.log("Attempting to upsert to Supabase with data:", supabaseData);
@@ -437,11 +443,25 @@ export default function Home() {
             if (updatedUserMood) {
                 setLastLocallyPostedMood(updatedUserMood);
             }
+
+            // YENİ: Farcaster'a cast atma kontrolü
+            if (sendCast && user?.fid) { // Sadece onay kutusu işaretliyse VE Farcaster kullanıcısıysa cast at
+                try {
+                    const castContent = moodToPost.text
+                        ? `${moodToPost.emoji} ${moodToPost.text} at ${moodToPost.locationLabel || "a location"}`
+                        : `${moodToPost.emoji} at ${moodToPost.locationLabel || "a location"}`;
+                    await composeCast(castContent);
+                    console.log("Mood successfully cast to Farcaster.");
+                } catch (castErr: any) { // castErr tipini any olarak belirtmek daha güvenli
+                    console.error("Error sharing mood on Farcaster during add:", castErr);
+                    setCastError(`Failed to share on Farcaster: ${castErr.message || "Unknown error"}. You can try again later.`);
+                }
+            }
         }
 
-    } catch (unexpectedError) {
+    } catch (unexpectedError: any) { // unexpectedError tipini any olarak belirtmek daha güvenli
         console.error("An unexpected error occurred during Supabase operation:", unexpectedError);
-        setCastError(`An unexpected database error occurred.`);
+        setCastError(`An unexpected database error occurred: ${unexpectedError.message || "Unknown error"}.`);
     } finally {
         setUserLastMoodLocation({
             name: moodToPost.locationLabel || "Unknown Location",
@@ -472,37 +492,18 @@ export default function Home() {
     DEFAULT_ZOOM_LEVEL, 
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
-    setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods 
+    setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods,
+    sendCast, // YENİ: Bağımlılık dizisine eklendi
+    composeCast // YENİ: Bağımlılık dizisine eklendi
   ]); 
 
+  // handleCastLastMoodToFarcaster artık bu senaryoda kullanılmıyor, kaldırılabilir veya gelecekteki bir özellik için saklanabilir.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleCastLastMoodToFarcaster = useCallback(async () => {
-    if (!lastLocallyPostedMood) {
-        setCastError("No mood found to share on Farcaster.");
-        return;
-    }
-    if (!user?.fid) {
-        setCastError("You must be logged in as a Farcaster user to create a cast.");
-        return;
-    }
-
-    setIsSubmitting(true);
-    setCastError(null);
-
-    try {
-        const castContent = lastLocallyPostedMood.text
-            ? `${lastLocallyPostedMood.emoji} ${lastLocallyPostedMood.text} at ${lastLocallyPostedMood.locationLabel || "a location"}`
-            : `${lastLocallyPostedMood.emoji} at ${lastLocallyPostedMood.locationLabel || "a location"}`;
-
-        await composeCast(castContent);
-        console.log("Mood successfully cast to Farcaster.");
-    } catch (castErr) {
-        console.error("Error sharing mood on Farcaster:", castErr);
-        setCastError("Failed to share on Farcaster. Please try again.");
-    } finally {
-        setIsSubmitting(false);
-    }
-  }, [lastLocallyPostedMood, user?.fid, composeCast, setCastError, setIsSubmitting]);
+    // Bu fonksiyon artık doğrudan kullanılmıyor, 'handleAddMood' içinde entegre edildi.
+    // Ancak eslint hatası vermemesi için şimdilik boş bırakılabilir.
+    console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
@@ -806,6 +807,19 @@ export default function Home() {
                             ))}
                         </div>
                     </div>
+
+                    {/* YENİ EKLENEN: Send cast onay kutusu */}
+                    <div className="flex items-center space-x-2 shrink-0"> 
+                        <input
+                            type="checkbox"
+                            id="sendCastCheckbox"
+                            checked={sendCast}
+                            onChange={(e) => setSendCast(e.target.checked)}
+                            className="form-checkbox h-4 w-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
+                        />
+                        <label htmlFor="sendCastCheckbox" className="text-slate-300 select-none">Send cast</label>
+                    </div>
+                    {/* YENİ EKLENEN BÖLÜM SONU */}
 
                     <div className="space-y-4 shrink-0">
                         <div className="relative">
