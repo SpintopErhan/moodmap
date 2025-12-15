@@ -11,12 +11,6 @@ import defaultIcon from 'leaflet/dist/images/marker-icon.png';
 import defaultIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import defaultShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// --- Constants ---
-const DEFAULT_INITIAL_ZOOM = 14;
-const LOCATION_TIMEOUT_MS = 5000;
-const DRAGGING_REENABLE_DELAY_MS = 50;
-const UNKNOWN_LOCATION_LABEL = "Unknown Location";
-
 // Create default Leaflet icon
 const DefaultIcon = L.icon({
   iconUrl: defaultIcon.src,
@@ -50,45 +44,49 @@ const createEmojiIcon = (emoji: string) => {
   });
 };
 
-// --- Custom Cluster Marker for Multiple Moods (REFACTORED) ---
+// --- Custom Cluster Marker for Multiple Moods ---
 const createClusterIcon = (emojis: string[]) => {
-    const displayedEmojis = emojis.slice(0, 3); // Sadece ilk 3 emojiyi al
+    const displayedEmojis = emojis.slice(0, 3);
     
-    // Define base styles for inner emojis (Tailwind classes)
+    let stackedEmojisHtml = '';
+
     const baseInnerEmojiStyle = `
         absolute
         top-1/2 -translate-y-1/2
         text-lg
         pointer-events-none
     `; 
-    
-    // Define specific styles for each position in a cluster (up to 3 emojis)
-    const emojiPositionStyles = [
-        { left: '0px', transform: 'translateY(-50%) rotate(-10deg)', zIndex: 1 }, // 1. emoji
-        { left: '6px', transform: 'translateY(-50%) rotate(0deg)', zIndex: 2 },  // 2. emoji
-        { left: '12px', transform: 'translateY(-50%) rotate(10deg)', zIndex: 3 }, // 3. emoji
-    ];
 
-    let stackedEmojisHtml = '';
+    const offsetIncrement = 6;
+    const initialLeftMargin = 0;
 
     if (displayedEmojis.length === 1) {
-        // Center a single emoji
         stackedEmojisHtml = `
             <span class="${baseInnerEmojiStyle}" style="left: 50%; transform: translate(-50%, -50%); z-index: 3;">
                 ${displayedEmojis[0]}
             </span>
         `;
-    } else {
-        // Stack multiple emojis
-        stackedEmojisHtml = displayedEmojis.map((emoji, index) => {
-            const style = emojiPositionStyles[index];
-            if (!style) return ''; // Should not happen due to slice(0,3)
-            return `
-                <span class="${baseInnerEmojiStyle}" style="left: ${style.left}; ${style.transform}; z-index: ${style.zIndex};">
-                    ${emoji}
-                </span>
-            `;
-        }).join('');
+    } else if (displayedEmojis.length === 2) {
+        stackedEmojisHtml = `
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin}px; transform: translateY(-50%) rotate(-7deg); z-index: 2;">
+                ${displayedEmojis[0]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + offsetIncrement}px; transform: translateY(-50%) rotate(7deg); z-index: 3;">
+                ${displayedEmojis[1]}
+            </span>
+        `;
+    } else if (displayedEmojis.length >= 3) {
+        stackedEmojisHtml = `
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin}px; transform: translateY(-50%) rotate(-10deg); z-index: 1;">
+                ${displayedEmojis[0]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + offsetIncrement}px; transform: translateY(-50%) rotate(0deg); z-index: 2;">
+                ${displayedEmojis[1]}
+            </span>
+            <span class="${baseInnerEmojiStyle}" style="left: ${initialLeftMargin + (2 * offsetIncrement)}px; transform: translateY(-50%) rotate(10deg); z-index: 3;">
+                ${displayedEmojis[2]}
+            </span>
+        `;
     }
 
     return L.divIcon({
@@ -186,8 +184,8 @@ function MapRecenterHandler({ recenterTrigger, onRecenterComplete }: MapRecenter
 }
 
 interface MapUserInteractionWatcherProps {
-  onMapMove?: () => void;
-  onMapClick?: () => void;
+  onMapMove?: () => void; 
+  onMapClick?: () => void; // <<< Map tıklama olayını yakalamak için prop eklendi
 }
 
 const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ onMapMove, onMapClick }) => {
@@ -200,9 +198,9 @@ const MapUserInteractionWatcher: React.FC<MapUserInteractionWatcherProps> = ({ o
       console.log("[MapUserInteractionWatcher] User started zooming map.");
       onMapMove?.();
     },
-    click: (event) => {
+    click: (event) => { 
       console.log("[MapUserInteractionWatcher] Map clicked.", event);
-      onMapClick?.();
+      onMapClick?.(); // <<< Harita tıklama olayı dinleyicisi
     }
   });
   return null;
@@ -218,7 +216,7 @@ const MapTouchFixer: React.FC = () => {
       setTimeout(() => {
         map.dragging.enable();
         console.log("[MapTouchFixer] Dragging re-enabled.");
-      }, DRAGGING_REENABLE_DELAY_MS); // Using constant
+      }, 50);
     };
 
     map.on('zoomend', handleZoomEnd);
@@ -240,7 +238,7 @@ interface MapComponentProps {
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
   onClusterClick?: (moods: Mood[]) => void;
-  onMapClick?: () => void;
+  onMapClick?: () => void; 
   onMapReady?: () => void; // <<< YENİ: Harita hazır olduğunda çağrılacak callback
 }
 
@@ -252,7 +250,7 @@ export default function Map({
   onRecenterComplete,
   onMapMove,
   onClusterClick,
-  onMapClick,
+  onMapClick, 
   onMapReady, // <<< Yeni prop'u burada da destructre ediyoruz
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
@@ -269,13 +267,13 @@ export default function Map({
   const setInitialLocation = useCallback((location: LocationData) => {
     if (!hasLocationBeenSet) {
       setMapCenter(location.coords);
-      setMapZoom(location.zoom ?? DEFAULT_INITIAL_ZOOM); // Using constant
+      setMapZoom(location.zoom ?? 14); 
       setHasLocationBeenSet(true);
-      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? DEFAULT_INITIAL_ZOOM}), Type: ${location.locationType}`);
+      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`);
       onInitialLocationDetermined?.(location);
       onMapReady?.(); // <<< Harita hazır olduğunda page.tsx'i bilgilendir!
     }
-  }, [hasLocationBeenSet, onInitialLocationDetermined, onMapReady]);
+  }, [hasLocationBeenSet, onInitialLocationDetermined, onMapReady]); // onMapReady bağımlılıklara eklendi
 
 
   useEffect(() => {
@@ -284,10 +282,10 @@ export default function Map({
    if (navigator.geolocation) {
       timeoutId = setTimeout(() => {
         if (!hasLocationBeenSet) {
-          console.warn(`[Map] Location permission timed out (${LOCATION_TIMEOUT_MS / 1000}s). Setting to random location...`);
+          console.warn("[Map] Location permission timed out (5s). Setting to random location...");
           setInitialLocation(getRandomRemoteLocation());
         }
-      }, LOCATION_TIMEOUT_MS); // Using constant
+      }, 5000);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -295,7 +293,7 @@ export default function Map({
           setInitialLocation({
             name: "Your Current Location",
             coords: [position.coords.latitude, position.coords.longitude],
-            zoom: DEFAULT_INITIAL_ZOOM, // Using constant
+            zoom: 14, 
             popupText: "Your Current Location",
             locationType: 'user'
           });
@@ -330,9 +328,12 @@ export default function Map({
 
     moods.forEach((mood) => {
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
-        const key = mood.locationLabel && mood.locationLabel !== UNKNOWN_LOCATION_LABEL // Using constant
-            ? `${mood.locationLabel}-${locationCoordsKey}` 
-            : locationCoordsKey; 
+        
+        // DEĞİŞİKLİK BAŞLANGICI: Kümeleme anahtarı oluşturma mantığı güncellendi
+        const key = mood.locationLabel && mood.locationLabel !== "Unknown Location"
+            ? mood.locationLabel // Konum etiketi varsa ve "Unknown Location" değilse, sadece etikete göre kümele
+            : locationCoordsKey; // Aksi halde, (etiket yoksa veya "Unknown" ise) koordinatlara göre kümele
+        // DEĞİŞİKLİK SONU
         
         if (!groups[key]) {
             groups[key] = [];
@@ -349,8 +350,8 @@ export default function Map({
   }, [moods]);
 
 
-  // Harita merkezi henüz belirlenmediyse hiçbir şey render etmiyoruz.
-  // Yükleme ekranını PARENT (page.tsx) component yönetecek.
+  // Haritanın kendi yükleme ekranı kaldırıldı.
+  // mapCenter henüz belirlenmediyse null döndür, yükleme ekranını parent (page.tsx) yönetecek.
   if (!mapCenter) {
     return null; 
   }

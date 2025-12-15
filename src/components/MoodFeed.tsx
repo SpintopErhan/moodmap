@@ -90,7 +90,7 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
               {mood.text && <p className="text-slate-200 text-sm break-words">{mood.text}</p>} {/* text-sm ve break-words eklendi */}
               
               {/* 2. Username */}
-              <p className={`font-semibold text-purple-300 text-sm truncate ${mood.text ? 'mt-2' : ''}`}>@{mood.username}</p> {/* text-sm ve truncate eklendi */}
+              <p className={`font-semibold text-purple-300 text-sm truncate ${mood.text ? 'mt-2' : ''}`}>{mood.username}</p> {/* text-sm ve truncate eklendi */}
               
               {/* 3. Zaman Damgası */}
               <p className="text-xs text-gray-500 mt-0.5">{formatTimestamp(mood.timestamp)}</p> {/* text-xs ve renk ayarlandı */}

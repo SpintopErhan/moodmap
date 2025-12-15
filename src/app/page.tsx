@@ -11,14 +11,11 @@ import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
 
-// DEĞİŞİKLİK: Map bileşeni kendi yükleme ekranını yönetmediği için,
-// ana uygulama yükleme ekranı (page.tsx) tarafından beklenmesi gerekiyor.
-// Artık burada bir "loading" fallback'ine ihtiyacımız yok, çünkü tüm yükleme durumunu page.tsx yönetecek.
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
 });
 
-const MAX_MOOD_TEXT_LENGTH = 48;
+const MAX_MOOD_TEXT_LENGTH = 32;
 
 interface PresetLocation {
   id: string;
@@ -42,7 +39,6 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'world', name: 'World', coords: [0, 0], zoom: 3 }, 
 ];
 
-// Supabase'den gelen veriyi uygulama Mood tipine dönüştüren yardımcı fonksiyon
 interface SupabaseMood {
   uuid: string;
   username: string;
@@ -53,23 +49,22 @@ interface SupabaseMood {
   center_lng: number;
   emoji: string;
   user_note: string;
-  mood_date: string; // ISO string formatında
+  mood_date: string; 
 }
 
 const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
   return {
-    id: dbMood.uuid, // Supabase UUID'sini Mood id olarak kullan
+    id: dbMood.uuid, 
     emoji: dbMood.emoji,
     text: dbMood.user_note,
     location: { lat: dbMood.center_lat, lng: dbMood.center_lng },
     locationLabel: dbMood.location_label,
-    timestamp: new Date(dbMood.mood_date).getTime(), // ISO string'i timestamp'e çevir
-    userId: dbMood.fid.toString(), // fid'yi string olarak sakla
+    timestamp: new Date(dbMood.mood_date).getTime(), 
+    userId: dbMood.fid.toString(), 
     username: dbMood.username,
   };
 };
 
-// Sabit bir değer olduğu için useMemo dışına taşındı.
 const DEFAULT_ZOOM_LEVEL = 14;
 
 export default function Home() {
@@ -110,9 +105,7 @@ export default function Home() {
   } | null>(null);
 
   const [anonFid, setAnonFid] = useState<number | null>(null);
-  // DEĞİŞİKLİK: isInitialLoadComplete yerine isDataLoaded kullanıldı
   const [isDataLoaded, setIsDataLoaded] = useState(false); 
-  // DEĞİŞİKLİK: Haritanın hazır olup olmadığını kontrol eden yeni state
   const [isMapReady, setIsMapReady] = useState(false); 
 
 
@@ -142,12 +135,19 @@ export default function Home() {
     }
   }, []);
 
-  // Tüm mood'ları Supabase'den çeken yardımcı fonksiyon
   const fetchAllMoods = useCallback(async () => {
     console.log("[page.tsx] Fetching all moods from Supabase...");
+    
+    // DEĞİŞİKLİK BAŞLANGICI: Sadece son 3 günün moodlarını çekmek için filtre eklendi
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3); // 3 gün öncesinin tarihini hesapla
+    const threeDaysAgoISO = threeDaysAgo.toISOString(); // ISO formatına çevir
+
     const { data, error } = await supabase
       .from('moods')
-      .select('*');
+      .select('*')
+      .gte('mood_date', threeDaysAgoISO); // mood_date sütununda 3 gün öncesine eşit veya daha yeni olanları getir
+    // DEĞİŞİKLİK SONU
 
     if (error) {
       console.error("Error fetching all moods:", error);
@@ -162,13 +162,11 @@ export default function Home() {
     return [];
   }, []);
 
-  // YENİ useEffect: Uygulamanın ilk yüklenmesinde mood'ları çek ve başlangıç görünümünü ayarla
   useEffect(() => {
     const initializeAppData = async () => {
-      // DEĞİŞİKLİK: Farcaster status loading ise veya anonFid henüz belirlenmemişse bekle
       if (status === 'loading' || anonFid === null) { 
         console.log("[page.tsx] Waiting for Farcaster status to be loaded or anonFid to be set...", { status, anonFid });
-        return; // SDK veya anonFid hazır değilse, tekrar çalışmak için bekler.
+        return; 
       }
       
       console.log("[page.tsx] Starting initializeAppData logic.");
@@ -188,13 +186,11 @@ export default function Home() {
       if (effectiveFid === null) {
           console.error("[page.tsx] Critical: effectiveFid is null after determination logic. Setting error.");
           setCastError("Critical error: User ID is missing for database operations.");
-          setIsDataLoaded(true); // Hata olsa bile veri yükleme aşamasını tamamla
+          setIsDataLoaded(true); 
           setView(ViewState.ADD); 
           return;
       }
 
-
-      // 1. Kullanıcının kendi mood'unu kontrol et
       console.log(`[page.tsx] Checking for user's mood with FID: ${effectiveFid}`);
       const { data: userMoodData, error: userMoodError } = await supabase
         .from('moods')
@@ -229,11 +225,9 @@ export default function Home() {
         setView(ViewState.ADD); 
       }
 
-      // 2. Tüm mood'ları harita için çek
       const allMoods = await fetchAllMoods();
       setMoods(allMoods);
 
-      // DEĞİŞİKLİK: Verilerin yüklendiğini işaretle
       setIsDataLoaded(true); 
       console.log("[page.tsx] Initial app data loading complete (excluding map readiness).");
     };
@@ -606,19 +600,14 @@ export default function Home() {
 
   const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
 
-  // DEĞİŞİKLİK: Uygulamanın genel yükleme durumunu buradan yönetiyoruz.
-  // status === "loading": Farcaster MiniApp SDK'sı yükleniyor.
-  // !isDataLoaded: Uygulamanın kendi verileri (mood'lar, user mood, anonFid) yükleniyor.
-  // !isMapReady: Harita component'i konumunu belirleyip hazır hale geliyor.
   const isOverallLoading = status === "loading" || !isDataLoaded || !isMapReady;
 
-  // Hangi yükleme mesajının gösterileceğini belirle
   let loadingMessage = "";
   if (status === "loading") {
       loadingMessage = "Initializing Farcaster SDK..."; 
   } else if (!isDataLoaded) {
       loadingMessage = "Initializing data and location...";
-  } else if (!isMapReady) { // isDataLoaded true ama isMapReady false ise harita yükleniyor mesajı gösterilir
+  } else if (!isMapReady) { 
       loadingMessage = "Initializing map...";
   }
   
@@ -628,9 +617,16 @@ export default function Home() {
         style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
         className="relative flex h-[100dvh] w-full flex-col items-end justify-center bg-cover bg-center bg-no-repeat text-white overflow-hidden" 
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-600"></div>
-        </div>
+        {/* Ortadaki spinner kaldırıldı. */}
+        {/* <div className="absolute inset-0 flex items-center justify-center">
+            <div className="
+              animate-spin rounded-full h-16 w-16 
+              border-t-4 border-b-4 
+              border-indigo-400 
+              transform -translate-y-8 
+            "></div> 
+        </div> */}
+        {/* Alt ortada durum mesajı */}
         <div className="absolute bottom-4 w-full text-center"> 
           <p className="text-lg text-[#78787B] animate-pulse">
             {loadingMessage}
@@ -667,7 +663,6 @@ export default function Home() {
     );
   }
 
-  // SDK hata verirse bu ekran gösterilir
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -678,7 +673,6 @@ export default function Home() {
     );
   }
 
-  // DEĞİŞİKLİK: isOverallLoading false olduğunda, yani her şey yüklendiğinde ana UI'yi göster
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
@@ -691,35 +685,34 @@ export default function Home() {
       )}
 
       {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
-      {/* Sadece ViewState.LIST dışındaysa bu üst çubuğu göster */}
       {view !== ViewState.LIST && (
         <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
           {/* Top-left container (user info + recent mood) */}
           <div className="flex flex-col items-start gap-2"> 
               {/* 1. ROW: Kullanıcı adı kutusu ve Konum Navigasyon Butonu */}
-              <div className="flex items-center gap-3 pointer-events-auto">
+              <div className="flex items-center gap-2 pointer-events-auto">
                   {/* Kullanıcı adı kutusu */}
                   <div className="p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700">
-                      <p className="text-base font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
+                      <p className="text-sm font-semibold text-purple-100 leading-tight">@{user?.username || "anonymous"}</p>
                   </div>
                   {/* Konum Navigasyon Butonu */}
                   <button
                       onClick={handleRecenterToUserLocation}
                       disabled={isRecenterButtonDisabled} 
-                      className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
+                      className={`p-1 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
                           ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                       title="Recenter to your location or last mood location"
                   >
-                      <MapPin size={24} />
+                      <MapPin size={18} />
                   </button>
               </div>
 
               {/* 2. ROW: Kullanıcının son mod'u (emoji ve not) */}
               {lastLocallyPostedMood && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto max-w-[calc(100vw-32px)]">
-                      <span className="text-2xl">{lastLocallyPostedMood.emoji}</span>
+                  <div className="flex items-center gap-1 px-2 py-1 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto max-w-[calc(100vw-32px)]">
+                      <span className="text-xl">{lastLocallyPostedMood.emoji}</span>
                       {lastLocallyPostedMood.text && (
-                          <span className="text-base text-slate-200 truncate max-w-full">
+                          <span className="text-sm text-slate-200 truncate max-w-full">
                               {lastLocallyPostedMood.text}
                           </span>
                       )}
@@ -732,7 +725,6 @@ export default function Home() {
       {/* Main Content Area */}
       <div className="flex-1 relative z-0">
         <div className="absolute inset-0">
-            {/* DEĞİŞİKLİK: Map component'i artık sadece !isOverallLoading olduğunda render ediliyor */}
             <DynamicMap
                 moods={moods}
                 onInitialLocationDetermined={handleInitialLocationDetermined}
@@ -864,7 +856,7 @@ export default function Home() {
                                 Cancel
                             </Button>
                             <Button className="flex-1" onClick={handleAddMood} isLoading={isSubmitting} disabled={isPostVibeButtonDisabled}>
-                                Post Vibe
+                                Add to Map
                             </Button>
                         </div>
                     </div>
