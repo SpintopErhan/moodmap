@@ -124,7 +124,8 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
         throw authError;
       }
 
-      let finalEmbeds = [...rawEmbeds]; // Mevcut embed'leri kopyala
+      // Hata Düzeltildi: `let` yerine `const` kullanıldı
+      const finalEmbeds = [...rawEmbeds]; // Mevcut embed'leri kopyala
 
       // Uygulama URL'sini ekle (eğer zaten yoksa)
       // Bu kontrol, manuel olarak rawEmbeds'e eklense bile çiftlemeyi önler
