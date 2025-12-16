@@ -776,12 +776,12 @@ export default function Home() {
              >
                  <div 
                     // YENİ UI DEĞİŞİKLİĞİ: Paneli yukarı kaydırır ve içerik akışını yukarıdan başlatır
-                    className="w-full max-w-md flex flex-col h-full max-h-[600px] space-y-6 transform-gpu -translate-y-16"
+                    className="w-full max-w-md flex flex-col h-full max-h-[600px] space-y-4 transform-gpu -translate-y-12"
                     onClick={(e) => e.stopPropagation()} 
                  >
-                    <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
+                    <h2 className="text-xl font-bold text-center shrink-0">What&apos;s your Mood?</h2>
 
-                    <div className="min-h-[24px] flex items-center justify-center mt-2">
+                    <div className="min-h-[24px] flex items-center justify-center">
                         {!currentDeterminedLocationData && (
                             <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p>
                         )}
