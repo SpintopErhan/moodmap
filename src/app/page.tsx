@@ -15,7 +15,13 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
 });
 
-const MAX_MOOD_TEXT_LENGTH = 32;
+const MAX_MOOD_TEXT_LENGTH = 48;
+
+// YENİ EKLENTİ: Ortak panel stil sınıfları
+const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700";
+const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
+const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
+
 
 interface PresetLocation {
   id: string;
@@ -36,7 +42,7 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, 
   { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, 
   { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
-  { id: 'world', name: 'World', coords: [0, 0], zoom: 3 }, 
+  { id: 'world', name: 'World', coords: [0, 0], zoom: 2 }, 
 ];
 
 interface SupabaseMood {
@@ -66,7 +72,7 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
   };
 };
 
-const DEFAULT_ZOOM_LEVEL = 14;
+const DEFAULT_ZOOM_LEVEL = 11;
 
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp(); 
@@ -669,14 +675,14 @@ export default function Home() {
               {/* 1. ROW: Kullanıcı adı kutusu ve Konum Navigasyon Butonu */}
               <div className="flex items-center gap-2 pointer-events-auto">
                   {/* Kullanıcı adı kutusu */}
-                  <div className="p-2 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700">
+                  <div className={`p-2 ${BASE_TRANSLUCENT_PANEL_CLASSES}`}>
                       <p className="text-sm font-semibold text-purple-100 leading-tight">{user?.username || "anonymous"}</p>
                   </div>
                   {/* Konum Navigasyon Butonu */}
                   <button
                       onClick={handleRecenterToUserLocation}
                       disabled={isRecenterButtonDisabled} 
-                      className={`p-1.5 rounded-full transition-all bg-slate-900/80 backdrop-blur-md shadow-md border border-slate-700
+                      className={`p-1.5 rounded-full transition-all ${BASE_TRANSLUCENT_PANEL_CLASSES.replace('rounded-lg', 'rounded-full')}
                           ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
                       title="Recenter to your location or last mood location"
                   >
@@ -686,7 +692,7 @@ export default function Home() {
 
               {/* 2. ROW: Kullanıcının son mod'u (emoji ve not) */}
               {lastLocallyPostedMood && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700 pointer-events-auto max-w-[calc(100vw-32px)]">
+                  <div className={`flex items-center gap-1 px-2 py-1 ${BASE_TRANSLUCENT_PANEL_CLASSES} pointer-events-auto max-w-[calc(100vw-32px)]`}>
                       <span className="text-xl">{lastLocallyPostedMood.emoji}</span>
                       {lastLocallyPostedMood.text && (
                           <span className="text-sm text-slate-200 truncate max-w-full">
@@ -769,7 +775,8 @@ export default function Home() {
                  onClick={handleCloseAllPanels} 
              >
                  <div 
-                    className="w-full max-w-md flex flex-col h-full max-h-[600px] justify-center space-y-6"
+                    // YENİ UI DEĞİŞİKLİĞİ: Paneli yukarı kaydırır ve içerik akışını yukarıdan başlatır
+                    className="w-full max-w-md flex flex-col h-full max-h-[600px] space-y-6 transform-gpu -translate-y-16"
                     onClick={(e) => e.stopPropagation()} 
                  >
                     <h2 className="text-2xl font-bold text-center shrink-0">What&apos;s your vibe?</h2>
@@ -800,6 +807,11 @@ export default function Home() {
                         onMouseLeave={handleMouseLeave}
                         onMouseUp={handleMouseUp}
                         onMouseMove={handleMouseMove}
+                        // YENİ EKLENTİ: Kaydırma çubuğunun kenarlarına görsel ipucu
+                        style={{
+                            maskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)',
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)' /* Webkit tarayıcılar için */
+                        }}
                     >
                         <div className="grid grid-rows-3 grid-flow-col gap-3 w-max">
                             {MOOD_OPTIONS.map((opt) => (
@@ -863,7 +875,7 @@ export default function Home() {
 
       {/* --- Bottom Navigation Bar --- */}
       <div className="absolute bottom-0 left-0 right-0 z-[50] p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
-        <div className="flex items-center justify-around max-w-md mx-auto bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50 pointer-events-auto">
+        <div className={`flex items-center justify-around max-w-md mx-auto ${BOTTOM_NAV_PANEL_CLASSES} pointer-events-auto`}>
 
             {/* 1. Harita Görünümüne Geçiş Butonu ve Konum Listesi */}
             <div className="relative">
@@ -877,7 +889,7 @@ export default function Home() {
 
               {/* Preset Locations Menu - Burası harita butonuyla ilişkili, orijinal konumunda kaldı */}
               {showPresetLocations && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2 z-[51] pointer-events-auto"> 
+                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 z-[51] pointer-events-auto ${PRESET_LOCATION_MENU_CLASSES}`}> 
                   <ul className="text-sm text-slate-300">
                     {PRESET_LOCATIONS.map(preset => (
                       <li
@@ -928,7 +940,7 @@ export default function Home() {
           className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-cover bg-center bg-no-repeat text-white transition-opacity duration-500" 
         >
           <div className="absolute bottom-4 w-full text-center"> 
-            <p className="text-lg text-[#78787B] animate-pulse">
+            <p className="text-lg text-slate-400 animate-pulse"> {/* YENİ UI DEĞİŞİKLİĞİ: Renk kodu Tailwind sınıfına dönüştürüldü */}
               {loadingMessage}
             </p> 
           </div>
