@@ -51,7 +51,10 @@ export const useFarcasterMiniApp = (): UseFarcasterMiniAppResult => {
 
       try {
         console.log("[FarcasterSDK] Başlatılıyor: sdk.actions.ready() bekleniyor...");
-        await sdk.actions.ready();
+        await sdk.actions.ready({
+            // disableNativeGestures bayrağını true yaparak yerel kaydırma/kapatma hareketlerini devre dışı bırakıyoruz.
+            disableNativeGestures: true 
+        });
         console.log("[FarcasterSDK] Başarılı: sdk.actions.ready() tamamlandı.");
 
         try {
