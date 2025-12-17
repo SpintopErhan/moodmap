@@ -23,11 +23,72 @@ const DefaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+// YENİ BİLEŞEN: Haritanın zoom seviyesini dinleyen ve üst bileşene bildiren
+function MapZoomUpdater({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const handleZoomEnd = () => {
+      onZoomChange(map.getZoom());
+    };
+    map.on('zoomend', handleZoomEnd);
+    // Bileşen yüklendiğinde mevcut zoom seviyesini başlangıç olarak ayarla
+    onZoomChange(map.getZoom());
+
+    return () => {
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [map, onZoomChange]);
+  return null;
+}
+
 // --- Custom Emoji Marker for Single Mood ---
-const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean) => {
-  // Kullanıcının mood'u ise glow stili ve pulse animasyon sınıfı ekle
+// currentZoom parametresi eklendi
+const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean, currentZoom: number) => {
   const glowStyle = isCurrentUsersMood ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
-  const animationClass = isCurrentUsersMood ? 'animate-pulse' : ''; // YENİ: animate-pulse sınıfı eklendi
+  const animationClass = isCurrentUsersMood ? 'animate-pulse' : '';
+
+  let sizeClasses = 'w-10 h-10'; // Varsayılan boyut (40px)
+  let emojiTextSize = 'text-2xl'; // Varsayılan emoji metin boyutu (24px)
+  let iconSize: [number, number] = [40, 40];
+  let iconAnchor: [number, number] = [20, 20];
+  let popupAnchor: [number, number] = [0, -25];
+
+  // Eğer mevcut kullanıcının mood'u ise her zaman varsayılan en büyük boyutu uygula
+  if (isCurrentUsersMood) {
+    sizeClasses = 'w-10 h-10'; // 40px
+    emojiTextSize = 'text-2xl'; // 24px
+    iconSize = [40, 40];
+    iconAnchor = [20, 20];
+    popupAnchor = [0, -25];
+  } else {
+    // Zoom seviyesine göre boyutlandırma mantığı (diğer mood'lar için)
+    if (currentZoom >= 5) { // DEFAULT_ZOOM_LEVEL (page.tsx'te 5 olarak tanımlı)
+      sizeClasses = 'w-10 h-10';
+      emojiTextSize = 'text-2xl';
+      iconSize = [40, 40];
+      iconAnchor = [20, 20];
+      popupAnchor = [0, -25];
+    } else if (currentZoom === 4) {
+      sizeClasses = 'w-8 h-8';
+      emojiTextSize = 'text-xl';
+      iconSize = [32, 32];
+      iconAnchor = [16, 16];
+      popupAnchor = [0, -20];
+    } else if (currentZoom === 3) {
+      sizeClasses = 'w-6 h-6';
+      emojiTextSize = 'text-base';
+      iconSize = [24, 24];
+      iconAnchor = [12, 12];
+      popupAnchor = [0, -15];
+    } else if (currentZoom <= 2) {
+      sizeClasses = 'w-5 h-5';
+      emojiTextSize = 'text-sm';
+      iconSize = [20, 20];
+      iconAnchor = [10, 10];
+      popupAnchor = [0, -12];
+    }
+  }
+
 
   return L.divIcon({
     className: 'custom-emoji-marker',
@@ -35,35 +96,91 @@ const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean) => {
       bg-slate-800/95
       border-2 border-purple-600
       rounded-full
-      w-10 h-10
+      ${sizeClasses}
       flex items-center justify-center
-      text-2xl
+      ${emojiTextSize}
       shadow-md
       transition-transform
       hover:scale-110
-      ${animationClass}  // Animasyon sınıfı buraya eklendi
+      ${animationClass}
     " style="${glowStyle}">${emoji}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -25]
+    iconSize: iconSize,
+    iconAnchor: iconAnchor,
+    popupAnchor: popupAnchor
   });
 };
 
 // --- Custom Cluster Marker for Multiple Moods ---
-const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean) => {
+// currentZoom parametresi eklendi
+const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, currentZoom: number) => {
     const displayedEmojis = emojis.slice(0, 3);
     
     let stackedEmojisHtml = '';
+    
+    // Küme içindeki emojilerin metin boyutunu zoom'a göre ayarla
+    let innerEmojiTextSize = 'text-lg'; // Varsayılan (18px)
+    let offsetIncrement = 6; // Varsayılan ofset
+
+    const glowStyle = isCurrentUsersCluster ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
+    const animationClass = isCurrentUsersCluster ? 'animate-pulse' : '';
+
+    // Küme kapsayıcısının boyutunu zoom'a göre ayarla
+    let sizeClasses = 'w-10 h-10'; // Varsayılan (40px)
+    let iconSize: [number, number] = [40, 40];
+    let iconAnchor: [number, number] = [20, 20];
+    let popupAnchor: [number, number] = [0, -25];
+
+
+    // Eğer mevcut kullanıcının kümesi ise her zaman varsayılan en büyük boyutu uygula
+    if (isCurrentUsersCluster) {
+        innerEmojiTextSize = 'text-lg'; // 18px
+        offsetIncrement = 6;
+        sizeClasses = 'w-10 h-10'; // 40px
+        iconSize = [40, 40];
+        iconAnchor = [20, 20];
+        popupAnchor = [0, -25];
+    } else {
+        // Zoom seviyesine göre boyutlandırma mantığı (diğer kümeler için)
+        if (currentZoom >= 5) {
+          innerEmojiTextSize = 'text-lg';
+          offsetIncrement = 6;
+          sizeClasses = 'w-10 h-10';
+          iconSize = [40, 40];
+          iconAnchor = [20, 20];
+          popupAnchor = [0, -25];
+        } else if (currentZoom === 4) {
+          innerEmojiTextSize = 'text-base';
+          offsetIncrement = 5;
+          sizeClasses = 'w-8 h-8';
+          iconSize = [32, 32];
+          iconAnchor = [16, 16];
+          popupAnchor = [0, -20];
+        } else if (currentZoom === 3) {
+          innerEmojiTextSize = 'text-xs';
+          offsetIncrement = 4;
+          sizeClasses = 'w-6 h-6';
+          iconSize = [24, 24];
+          iconAnchor = [12, 12];
+          popupAnchor = [0, -15];
+        } else if (currentZoom <= 2) {
+          innerEmojiTextSize = 'text-[10px]';
+          offsetIncrement = 3;
+          sizeClasses = 'w-5 h-5';
+          iconSize = [20, 20];
+          iconAnchor = [10, 10];
+          popupAnchor = [0, -12];
+        }
+    }
+
 
     const baseInnerEmojiStyle = `
         absolute
         top-1/2 -translate-y-1/2
-        text-lg
+        ${innerEmojiTextSize}
         pointer-events-none
     `; 
-
-    const offsetIncrement = 6;
-    const initialLeftMargin = 0;
+    
+    const initialLeftMargin = 0; 
 
     if (displayedEmojis.length === 1) {
         stackedEmojisHtml = `
@@ -94,25 +211,21 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean) => 
         `;
     }
 
-    // Kullanıcının kümesi ise glow stili ve pulse animasyon sınıfı ekle
-    const glowStyle = isCurrentUsersCluster ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
-    const animationClass = isCurrentUsersCluster ? 'animate-pulse' : ''; // YENİ: animate-pulse sınıfı eklendi
-
     return L.divIcon({
       className: 'custom-cluster-marker',
       html: `<div class="
         bg-slate-800/95
         border-2 border-purple-600
         rounded-full
-        w-10 h-10
+        ${sizeClasses}
         relative
         overflow-hidden
         shadow-md
-        ${animationClass}  // Animasyon sınıfı buraya eklendi
+        ${animationClass}
       " style="${glowStyle}">${stackedEmojisHtml}</div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-      popupAnchor: [0, -25]
+      iconSize: iconSize,
+      iconAnchor: iconAnchor,
+      popupAnchor: popupAnchor
     });
   };
 
@@ -120,7 +233,7 @@ const REMOTE_LOCATIONS: LocationData[] = [
   { name: "Sahara Desert", coords: [23.4514, 15.5369], zoom: 5, popupText: "Location permission denied: Sahara Desert", locationType: 'fallback' },
   { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
   { name: "Greenland", coords: [71.7069, -42.6043], zoom: 4, popupText: "Location permission denied: Greenland", locationType: 'fallback' },
-  { name: "Mariana Trench", coords: [11.3650, 142.2500], zoom: 7, popupText: "Location permission denied: Mariana Trench", locationType: 'fallback' },
+  { name: "Mariana Trench", coords: [11.3650, 142.2500], zoom: 5, popupText: "Location permission denied: Mariana Trench", locationType: 'fallback' },
 ];
 
 const getRandomRemoteLocation = (): LocationData => {
@@ -291,7 +404,9 @@ export default function Map({
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
   const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
-  
+  // YENİ STATE: Haritanın anlık zoom seviyesini tutar
+  const [currentZoom, setCurrentZoom] = useState(1); // Başlangıç zoom seviyesiyle veya varsayılanla başlat
+
   useEffect(() => {
     if (typeof window !== 'undefined' && L.Marker.prototype.options.icon !== DefaultIcon) {
         L.Marker.prototype.options.icon = DefaultIcon;
@@ -392,7 +507,7 @@ export default function Map({
     <div style={{ height, width: '100%' }}>
       <MapContainer
         center={mapCenter}
-        zoom={mapZoom}
+        zoom={mapZoom} // Başlangıç zoom seviyesi
         minZoom={1}
         scrollWheelZoom={false} 
         doubleClickZoom={false} 
@@ -406,6 +521,8 @@ export default function Map({
         whenReady={() => { 
             onMapReady?.();
             console.log("[Map.tsx] MapContainer created, onMapReady fired.");
+            // Harita hazır olduğunda da ilk zoom seviyesini kaydet
+            setCurrentZoom(mapZoom); 
         }}
       >
         <TileLayer
@@ -414,21 +531,29 @@ export default function Map({
           noWrap={true}
         />
         
+        {/* YENİ EKLENTİ: Zoom seviyesini güncelleyen bileşen */}
+        <MapZoomUpdater onZoomChange={setCurrentZoom} />
+
         {clusteredMoods.map((clusterData) => { 
             const { clusterKey, moods: group, mainMood, isCluster } = clusterData; 
             
             // Mevcut kullanıcının FID'si ile karşılaştırma yap
+            const isCurrentUsersMoodForSingle = mainMood.userId === currentFid?.toString();
             const isCurrentUsersMoodInCluster = group.some(mood => mood.userId === currentFid?.toString());
+            
+            // Marker'ın zIndexOffset değerini belirle. Kullanıcının moduysa yüksek bir değer ver.
+            const zIndexOffset = (isCurrentUsersMoodForSingle || isCurrentUsersMoodInCluster) ? 1000 : 0;
             
             return (
                 <Marker
                     key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
-                    // createEmojiIcon ve createClusterIcon'a yeni parametreyi gönder
+                    // createEmojiIcon ve createClusterIcon'a yeni currentZoom parametresini gönder
                     icon={isCluster 
-                        ? createClusterIcon(group.map(m => m.emoji), isCurrentUsersMoodInCluster) 
-                        : createEmojiIcon(mainMood.emoji, mainMood.userId === currentFid?.toString()) 
+                        ? createClusterIcon(group.map(m => m.emoji), isCurrentUsersMoodInCluster, currentZoom) 
+                        : createEmojiIcon(mainMood.emoji, isCurrentUsersMoodForSingle, currentZoom) 
                     }
+                    zIndexOffset={zIndexOffset} // <<< YENİ: zIndexOffset buraya eklendi
                     eventHandlers={isCluster ? {
                         click: () => onClusterClick?.(group) 
                     } : undefined}
