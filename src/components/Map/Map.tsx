@@ -24,7 +24,11 @@ const DefaultIcon = L.icon({
 });
 
 // --- Custom Emoji Marker for Single Mood ---
-const createEmojiIcon = (emoji: string) => {
+const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean) => {
+  // Kullanıcının mood'u ise glow stili ve pulse animasyon sınıfı ekle
+  const glowStyle = isCurrentUsersMood ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
+  const animationClass = isCurrentUsersMood ? 'animate-pulse' : ''; // YENİ: animate-pulse sınıfı eklendi
+
   return L.divIcon({
     className: 'custom-emoji-marker',
     html: `<div class="
@@ -37,7 +41,8 @@ const createEmojiIcon = (emoji: string) => {
       shadow-md
       transition-transform
       hover:scale-110
-    ">${emoji}</div>`,
+      ${animationClass}  // Animasyon sınıfı buraya eklendi
+    " style="${glowStyle}">${emoji}</div>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -25]
@@ -45,7 +50,7 @@ const createEmojiIcon = (emoji: string) => {
 };
 
 // --- Custom Cluster Marker for Multiple Moods ---
-const createClusterIcon = (emojis: string[]) => {
+const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean) => {
     const displayedEmojis = emojis.slice(0, 3);
     
     let stackedEmojisHtml = '';
@@ -89,6 +94,10 @@ const createClusterIcon = (emojis: string[]) => {
         `;
     }
 
+    // Kullanıcının kümesi ise glow stili ve pulse animasyon sınıfı ekle
+    const glowStyle = isCurrentUsersCluster ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
+    const animationClass = isCurrentUsersCluster ? 'animate-pulse' : ''; // YENİ: animate-pulse sınıfı eklendi
+
     return L.divIcon({
       className: 'custom-cluster-marker',
       html: `<div class="
@@ -99,7 +108,8 @@ const createClusterIcon = (emojis: string[]) => {
         relative
         overflow-hidden
         shadow-md
-      ">${stackedEmojisHtml}</div>`,
+        ${animationClass}  // Animasyon sınıfı buraya eklendi
+      " style="${glowStyle}">${stackedEmojisHtml}</div>`,
       iconSize: [40, 40],
       iconAnchor: [20, 20],
       popupAnchor: [0, -25]
@@ -261,7 +271,8 @@ interface MapComponentProps {
   onClusterClick?: (moods: Mood[]) => void;
   onMapClick?: () => void; 
   onMapReady?: () => void; 
-  isMapVisible?: boolean; // <<< YENİ: Haritanın ana kapsayıcısının görünürlük durumu
+  isMapVisible?: boolean; // Haritanın ana kapsayıcısının görünürlük durumu
+  currentFid: number | null; // Mevcut kullanıcının FID'si (number)
 }
 
 export default function Map({
@@ -274,7 +285,8 @@ export default function Map({
   onClusterClick,
   onMapClick, 
   onMapReady, 
-  isMapVisible, // <<< isMapVisible prop'u
+  isMapVisible,
+  currentFid, // currentFid prop'u
 }: MapComponentProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1);
@@ -294,7 +306,6 @@ export default function Map({
       setHasLocationBeenSet(true);
       console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`);
       onInitialLocationDetermined?.(location);
-      // onMapReady buradan kaldırıldı, MapContainer'ın whenCreated callback'ine taşındı.
     }
   }, [hasLocationBeenSet, onInitialLocationDetermined]);
 
@@ -352,11 +363,9 @@ export default function Map({
     moods.forEach((mood) => {
         const locationCoordsKey = `${mood.location.lat.toFixed(6)},${mood.location.lng.toFixed(6)}`;
         
-        // DEĞİŞİKLİK BAŞLANGICI: Kümeleme anahtarı oluşturma mantığı güncellendi
         const key = mood.locationLabel && mood.locationLabel !== "Unknown Location"
-            ? mood.locationLabel // Konum etiketi varsa ve "Unknown Location" değilse, sadece etikete göre kümele
-            : locationCoordsKey; // Aksi halde, (etiket yoksa veya "Unknown" ise) koordinatlara göre kümele
-        // DEĞİŞİKLİK SONU
+            ? mood.locationLabel 
+            : locationCoordsKey; 
         
         if (!groups[key]) {
             groups[key] = [];
@@ -373,8 +382,6 @@ export default function Map({
   }, [moods]);
 
 
-  // Haritanın kendi yükleme ekranı kaldırıldı.
-  // mapCenter henüz belirlenmediyse null döndür, yükleme ekranını parent (page.tsx) yönetecek.
   if (!mapCenter) {
     return null; 
   }
@@ -396,7 +403,7 @@ export default function Map({
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         zoomControl={false} 
-        whenReady={() => { // <<< YENİ: Harita objesi oluşturulduğunda onMapReady'yi çağır
+        whenReady={() => { 
             onMapReady?.();
             console.log("[Map.tsx] MapContainer created, onMapReady fired.");
         }}
@@ -410,11 +417,18 @@ export default function Map({
         {clusteredMoods.map((clusterData) => { 
             const { clusterKey, moods: group, mainMood, isCluster } = clusterData; 
             
+            // Mevcut kullanıcının FID'si ile karşılaştırma yap
+            const isCurrentUsersMoodInCluster = group.some(mood => mood.userId === currentFid?.toString());
+            
             return (
                 <Marker
                     key={clusterKey} 
                     position={[mainMood.location.lat, mainMood.location.lng]}
-                    icon={isCluster ? createClusterIcon(group.map(m => m.emoji)) : createEmojiIcon(mainMood.emoji)}
+                    // createEmojiIcon ve createClusterIcon'a yeni parametreyi gönder
+                    icon={isCluster 
+                        ? createClusterIcon(group.map(m => m.emoji), isCurrentUsersMoodInCluster) 
+                        : createEmojiIcon(mainMood.emoji, mainMood.userId === currentFid?.toString()) 
+                    }
                     eventHandlers={isCluster ? {
                         click: () => onClusterClick?.(group) 
                     } : undefined}
@@ -440,7 +454,7 @@ export default function Map({
         <MapRecenterHandler recenterTrigger={recenterTrigger} onRecenterComplete={onRecenterComplete} />
         {(onMapMove || onMapClick) && <MapUserInteractionWatcher onMapMove={onMapMove} onMapClick={onMapClick} />} 
         <MapTouchFixer />
-        <MapVisibilityUpdater isMapVisible={isMapVisible} /> {/* YENİ BİLEŞENİ BURADA EKLEDİK */}
+        <MapVisibilityUpdater isMapVisible={isMapVisible} />
         
       </MapContainer>
     </div>

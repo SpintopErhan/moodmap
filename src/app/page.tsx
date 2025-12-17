@@ -31,17 +31,17 @@ interface PresetLocation {
 }
 
 const PRESET_LOCATIONS: PresetLocation[] = [
-  { id: 'istanbul', name: 'Istanbul', coords: [41.0082, 28.9784], zoom: 9 },
-  { id: 'berlin', name: 'Berlin', coords: [52.5200, 13.4050], zoom: 9 },
-  { id: 'paris', name: 'Paris', coords: [48.8566, 2.3522], zoom: 9 },
-  { id: 'london', name: 'London', coords: [51.5074, 0.1278], zoom: 9 },
-  { id: 'barcelona', name: 'Barcelona', coords: [41.3851, 2.1734], zoom: 9 },
-  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 8 },
-  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 8 },
-  { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 9 },
-  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 10 }, 
-  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 9 }, 
-  { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 9 },
+  { id: 'istanbul', name: 'Istanbul', coords: [41.0082, 28.9784], zoom: 7 },
+  { id: 'berlin', name: 'Berlin', coords: [52.5200, 13.4050], zoom: 7 },
+  { id: 'paris', name: 'Paris', coords: [48.8566, 2.3522], zoom: 7 },
+  { id: 'london', name: 'London', coords: [51.5074, 0.1278], zoom: 7 },
+  { id: 'barcelona', name: 'Barcelona', coords: [41.3851, 2.1734], zoom: 7 },
+  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 7 },
+  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 7 },
+  { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 7 },
+  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 7 }, 
+  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 7 }, 
+  { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 7 },
   { id: 'world', name: 'World', coords: [0, 0], zoom: 2 }, 
 ];
 
@@ -56,7 +56,7 @@ interface SupabaseMood {
   emoji: string;
   user_note: string;
   mood_date: string; 
-  cast: boolean; // YENİ: Supabase'den çekilen 'cast' sütunu için
+  cast: boolean; // Supabase'den çekilen 'cast' sütunu için
 }
 
 const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
@@ -72,7 +72,7 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
   };
 };
 
-const DEFAULT_ZOOM_LEVEL = 11;
+const DEFAULT_ZOOM_LEVEL = 5;
 
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp(); 
@@ -98,7 +98,7 @@ export default function Home() {
   const [statusText, setStatusText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [castError, setCastError] = useState<string | null>(null); 
-  const [sendCast, setSendCast] = useState(true); // YENİ: Cast gönderme onay kutusunun durumu
+  const [sendCast, setSendCast] = useState(true); // Cast gönderme onay kutusunun durumu
 
   const [selectedClusterMoods, setSelectedClusterMoods] = useState<Mood[] | null>(null); 
 
@@ -115,6 +115,8 @@ export default function Home() {
   const [anonFid, setAnonFid] = useState<number | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false); 
   const [isMapReady, setIsMapReady] = useState(false); 
+  // YENİ STATE: Map bileşenine göndermek üzere kullanıcının belirlenmiş FID'si
+  const [userEffectiveFid, setUserEffectiveFid] = useState<number | null>(null); 
 
 
   // Geolocation ve Anonim FID yükleme
@@ -130,13 +132,13 @@ export default function Home() {
         console.error("Failed to load geolocation module dynamically:", err);
       });
 
-      const storedAnonFid = localStorage.getItem('farcatser_anon_fid'); 
+      const storedAnonFid = localStorage.getItem('farcaster_anon_fid'); 
       if (storedAnonFid) { 
         setAnonFid(parseInt(storedAnonFid, 10));
         console.log("[page.tsx] Loaded anonymous FID from localStorage:", storedAnonFid);
       } else {
         const newAnonFid = -(Math.floor(Math.random() * 2_000_000_000) + 1);
-        localStorage.setItem('farcatser_anon_fid', newAnonFid.toString());
+        localStorage.setItem('farcaster_anon_fid', newAnonFid.toString());
         setAnonFid(newAnonFid);
         console.log("[page.tsx] Generated new anonymous FID and stored in localStorage:", newAnonFid);
       }
@@ -153,7 +155,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from('moods')
-      .select('*, cast') // YENİ: cast sütununu da seçiyoruz
+      .select('*, cast') // cast sütununu da seçiyoruz
       .gte('mood_date', threeDaysAgoISO); // mood_date sütununda 3 gün öncesine eşit veya daha yeni olanları getir
 
     if (error) {
@@ -170,7 +172,6 @@ export default function Home() {
   }, []);
 
   // initializeAppData için bağımlılık dizisi güncellendi.
-  // İçinde kullanılan tüm state setter'lar ve DEFAULT_ZOOM_LEVEL (sabit olmasına rağmen) eklendi.
   useEffect(() => {
     const initializeAppData = async () => {
       if (status === 'loading' || anonFid === null) { 
@@ -192,6 +193,9 @@ export default function Home() {
         effectiveFid = 0; 
       }
       
+      // YENİ: Belirlenen effectiveFid'i state'e kaydet
+      setUserEffectiveFid(effectiveFid);
+
       if (effectiveFid === null) {
           console.error("[page.tsx] Critical: effectiveFid is null after determination logic. Setting error.");
           setCastError("Critical error: User ID is missing for database operations.");
@@ -203,7 +207,7 @@ export default function Home() {
       console.log(`[page.tsx] Checking for user's mood with FID: ${effectiveFid}`);
       const { data: userMoodData, error: userMoodError } = await supabase
         .from('moods')
-        .select('*, cast') // YENİ: cast sütununu da çekiyoruz
+        .select('*, cast') // cast sütununu da çekiyoruz
         .eq('fid', effectiveFid)
         .single(); 
 
@@ -215,7 +219,7 @@ export default function Home() {
         console.log("[page.tsx] User's initial mood found:", userMoodData);
         const userAppMood = mapSupabaseMoodToAppMood(userMoodData);
         setLastLocallyPostedMood(userAppMood); 
-        setSendCast(userMoodData.cast); // YENİ: Kullanıcının son mood'undan cast durumunu al
+        setSendCast(userMoodData.cast); // Kullanıcının son mood'undan cast durumunu al
         setUserLastMoodLocation({ 
             name: userAppMood.locationLabel || "Unknown Location",
             coords: [userAppMood.location.lat, userAppMood.location.lng],
@@ -256,7 +260,7 @@ export default function Home() {
     setIsDataLoaded, 
     setMoods,
     setSendCast, 
-    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
+    setUserEffectiveFid, // Yeni state setter bağımlılığı eklendi (güvenli olması açısından)
   ]);
 
 
@@ -270,13 +274,12 @@ export default function Home() {
     
     setView(ViewState.MAP); 
     setSelectedClusterMoods(null); 
-    // setShowPresetLocations kaldırıldı, çünkü bir state setter ve bağımlılık olarak eklenmesine gerek yok.
     setShowPresetLocations(false); 
     setSelectedEmoji(MOOD_OPTIONS[0].emoji); 
     setStatusText(''); 
     setIsSubmitting(false); 
     setCastError(null); 
-    setSendCast(true); // YENİ: Paneller kapanırken varsayılan olarak true yap
+    setSendCast(true); // Paneller kapanırken varsayılan olarak true yap
     console.log("[page.tsx] All panels closed and states reset to map view.");
   }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast]);
 
@@ -335,7 +338,6 @@ export default function Home() {
       geolocationFunctions, 
       setCurrentDeterminedLocationData, 
       setIsMapCenteredOnUserLocation, 
-      // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
     ]);
 
 
@@ -429,7 +431,7 @@ export default function Home() {
             emoji: moodToPost.emoji,
             user_note: moodToPost.text,
             mood_date: new Date(moodToPost.timestamp).toISOString(), 
-            cast: sendCast, // YENİ: `cast` sütunu eklendi
+            cast: sendCast, // `cast` sütunu eklendi
         };
 
         console.log("Attempting to upsert to Supabase with data:", supabaseData);
@@ -455,7 +457,7 @@ export default function Home() {
                 setLastLocallyPostedMood(updatedUserMood);
             }
 
-            // YENİ: Farcaster'a cast atma kontrolü
+            // Farcaster'a cast atma kontrolü
             if (sendCast && user?.fid) { // Sadece onay kutusu işaretliyse VE Farcaster kullanıcısıysa cast at
                 try {
                     // Cast içeriği değiştirildi
@@ -501,7 +503,6 @@ export default function Home() {
     anonFid, 
     user?.username,
     user?.displayName, 
-    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
     moods, selectedEmoji, statusText, setCastError, setIsSubmitting, setMoods, 
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods,
@@ -573,7 +574,6 @@ export default function Home() {
     currentDeterminedLocationData, 
     setMapRecenterTrigger, 
     setIsMapCenteredOnUserLocation, 
-    // DEFAULT_ZOOM_LEVEL kaldırıldı, çünkü sabit bir değer.
   ]);
 
   const handleRecenterToUserLocation = useCallback(() => {
@@ -726,7 +726,8 @@ export default function Home() {
                         console.log("[page.tsx] DynamicMap was already ready (redundant onMapReady call or component re-render).");
                     }
                 }} 
-                isMapVisible={!isOverallLoading} // YENİ EKLENEN PROP
+                isMapVisible={!isOverallLoading}
+                currentFid={userEffectiveFid} // <<< YENİ: Belirlenen FID'yi Map bileşenine iletiyoruz
             />
         </div>
 
@@ -807,7 +808,7 @@ export default function Home() {
                         onMouseLeave={handleMouseLeave}
                         onMouseUp={handleMouseUp}
                         onMouseMove={handleMouseMove}
-                        // YENİ EKLENTİ: Kaydırma çubuğunun kenarlarına görsel ipucu
+                        // Kaydırma çubuğunun kenarlarına görsel ipucu
                         style={{
                             maskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)',
                             WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)' /* Webkit tarayıcılar için */
@@ -940,7 +941,7 @@ export default function Home() {
           className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-cover bg-center bg-no-repeat text-white transition-opacity duration-500" 
         >
           <div className="absolute bottom-4 w-full text-center"> 
-            <p className="text-lg text-slate-400 animate-pulse"> {/* YENİ UI DEĞİŞİKLİĞİ: Renk kodu Tailwind sınıfına dönüştürüldü */}
+            <p className="text-lg text-slate-400 animate-pulse">
               {loadingMessage}
             </p> 
           </div>
