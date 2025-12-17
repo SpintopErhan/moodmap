@@ -35,7 +35,8 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
         {onCloseRequest && (
           <button
             onClick={onCloseRequest}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            // "Close" butonu rengi direkt #0000FF ve hover için biraz daha koyusu (#0000CC) olarak güncellendi
+            className="mt-4 px-4 py-2 bg-[#0000FF] text-white rounded-md hover:bg-[#0000CC] transition-colors"
           >
             Close
           </button>
@@ -50,9 +51,11 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
       {!hideHeader && (
         // Başlık çubuğu rengi ve kenarlık
         <div className="flex justify-between items-center p-4 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 shrink-0">
-          <h2 className="text-xl font-bold text-blue-300"> {/* BURADA DEĞİŞTİ */}
+          {/* "Recent Vibes" başlık rengi direkt #0000FF olarak ayarlandı */}
+          <h2 className="text-xl font-bold text-[#0000FF]"> 
             Recent Vibes
-            <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full"> {/* BURADA DEĞİŞTİ */}
+            {/* Mood sayısı etiketi rengi direkt #0000FF olarak ayarlandı */}
+            <span className="ml-2 text-xs bg-[#0000FF] text-white px-2 py-0.5 rounded-full"> 
                 {moods.length}
             </span>
           </h2>
@@ -90,7 +93,8 @@ export const MoodFeed: React.FC<MoodFeedProps> = ({ moods, onCloseRequest, hideH
               {mood.text && <p className="text-slate-200 text-sm break-words">{mood.text}</p>} {/* text-sm ve break-words eklendi */}
               
               {/* 2. Username */}
-              <p className={`font-semibold text-blue-300 text-sm truncate ${mood.text ? 'mt-2' : ''}`}>{mood.username}</p> {/* BURADA DEĞİŞTİ */}
+              {/* Kullanıcı adı rengi direkt #0000FF olarak ayarlandı */}
+              <p className={`font-semibold text-[#0000FF] text-sm truncate ${mood.text ? 'mt-2' : ''}`}>{mood.username}</p> 
               
               {/* 3. Zaman Damgası */}
               <p className="text-xs text-gray-500 mt-0.5">{formatTimestamp(mood.timestamp)}</p> {/* text-xs ve renk ayarlandı */}
