@@ -44,7 +44,8 @@ function MapZoomUpdater({ onZoomChange }: { onZoomChange: (zoom: number) => void
 // --- Custom Emoji Marker for Single Mood ---
 // currentZoom parametresi eklendi
 const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean, currentZoom: number) => {
-  const glowStyle = isCurrentUsersMood ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
+  // Glow efekti güçlendirildi (blur ve spread radius artırıldı, opaklık yükseltildi)
+  const glowStyle = isCurrentUsersMood ? 'box-shadow: 0 0 20px 8px rgba(0, 0, 255, 0.8);' : '';
   const animationClass = isCurrentUsersMood ? 'animate-pulse' : '';
 
   let sizeClasses = 'w-10 h-10'; // Varsayılan boyut (40px)
@@ -94,7 +95,7 @@ const createEmojiIcon = (emoji: string, isCurrentUsersMood: boolean, currentZoom
     className: 'custom-emoji-marker',
     html: `<div class="
       bg-slate-800/95
-      border-2 border-purple-600
+      border-2 border-blue-600
       rounded-full
       ${sizeClasses}
       flex items-center justify-center
@@ -121,7 +122,8 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, cur
     let innerEmojiTextSize = 'text-lg'; // Varsayılan (18px)
     let offsetIncrement = 6; // Varsayılan ofset
 
-    const glowStyle = isCurrentUsersCluster ? 'box-shadow: 0 0 12px 4px rgba(192, 132, 252, 0.7);' : '';
+    // Glow efekti güçlendirildi (blur ve spread radius artırıldı, opaklık yükseltildi)
+    const glowStyle = isCurrentUsersCluster ? 'box-shadow: 0 0 20px 8px rgba(0, 0, 255, 0.8);' : '';
     const animationClass = isCurrentUsersCluster ? 'animate-pulse' : '';
 
     // Küme kapsayıcısının boyutunu zoom'a göre ayarla
@@ -215,7 +217,7 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, cur
       className: 'custom-cluster-marker',
       html: `<div class="
         bg-slate-800/95
-        border-2 border-purple-600
+        border-2 border-blue-600
         rounded-full
         ${sizeClasses}
         relative
@@ -417,9 +419,9 @@ export default function Map({
   const setInitialLocation = useCallback((location: LocationData) => {
     if (!hasLocationBeenSet) {
       setMapCenter(location.coords);
-      setMapZoom(location.zoom ?? 14); 
+      setMapZoom(location.zoom ?? 7); //zoom 14'ten 7'ye değiştirildi
       setHasLocationBeenSet(true);
-      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 14}), Type: ${location.locationType}`);
+      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 5}), Type: ${location.locationType}`);
       onInitialLocationDetermined?.(location);
     }
   }, [hasLocationBeenSet, onInitialLocationDetermined]);
@@ -442,7 +444,7 @@ export default function Map({
           setInitialLocation({
             name: "Your Current Location",
             coords: [position.coords.latitude, position.coords.longitude],
-            zoom: 14, 
+            zoom: 7, //zoom 14'ten 7'ye değiştirildi
             popupText: "Your Current Location",
             locationType: 'user'
           });

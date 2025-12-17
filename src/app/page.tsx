@@ -42,7 +42,7 @@ const PRESET_LOCATIONS: PresetLocation[] = [
   { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 7 }, 
   { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 7 }, 
   { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 7 },
-  { id: 'world', name: 'World', coords: [0, 0], zoom: 2 }, 
+  { id: 'world', name: 'World', coords: [5, 5], zoom: 1 }, 
 ];
 
 interface SupabaseMood {
@@ -486,7 +486,7 @@ export default function Home() {
         });
         setMapRecenterTrigger({
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL, 
+            zoom: DEFAULT_ZOOM_LEVEL, 
             animate: false,
             purpose: 'userLocation', 
         });
@@ -650,7 +650,6 @@ export default function Home() {
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
         <p className="text-2xl text-red-500 font-bold">An error occurred!</p>
         <p className="text-xl text-red-300 mt-2">{error?.message || "SDK failed to initialize."}</p>
-        <p className="mt-4 text-lg">Please check app permissions or refresh your browser.</p>
       </main>
     );
   }
@@ -676,14 +675,14 @@ export default function Home() {
               <div className="flex items-center gap-2 pointer-events-auto">
                   {/* Kullanıcı adı kutusu */}
                   <div className={`p-2 ${BASE_TRANSLUCENT_PANEL_CLASSES}`}>
-                      <p className="text-sm font-semibold text-purple-100 leading-tight">{user?.username || "anonymous"}</p>
+                      <p className="text-sm font-semibold text-blue-400 leading-tight">{user?.username || "anonymous"}</p>
                   </div>
                   {/* Konum Navigasyon Butonu */}
                   <button
                       onClick={handleRecenterToUserLocation}
                       disabled={isRecenterButtonDisabled} 
                       className={`p-1.5 rounded-full transition-all ${BASE_TRANSLUCENT_PANEL_CLASSES.replace('rounded-lg', 'rounded-full')}
-                          ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-purple-400 hover:text-white hover:bg-slate-700/80'}`}
+                          ${isRecenterButtonDisabled ? 'text-slate-600 cursor-not-allowed' : 'text-blue-400 hover:text-white hover:bg-slate-700/80'}`}
                       title="Recenter to your location or last mood location"
                   >
                       <MapPin size={18} />
@@ -695,7 +694,7 @@ export default function Home() {
                   <div className={`flex items-center gap-1 px-2 py-1 ${BASE_TRANSLUCENT_PANEL_CLASSES} pointer-events-auto max-w-[calc(100vw-32px)]`}>
                       <span className="text-xl">{lastLocallyPostedMood.emoji}</span>
                       {lastLocallyPostedMood.text && (
-                          <span className="text-sm text-slate-200 truncate max-w-full">
+                          <span className="text-sm text-blue-400 truncate max-w-full">
                               {lastLocallyPostedMood.text}
                           </span>
                       )}
@@ -755,7 +754,7 @@ export default function Home() {
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} // Bu paneli tıklayarak kapatmak için
             >
-                <h3 className="text-base font-bold text-purple-300 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
+                <h3 className="text-base font-bold text-blue-300 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-1" onClick={(e) => e.stopPropagation()}>
@@ -821,7 +820,7 @@ export default function Home() {
                                     onClick={() => setSelectedEmoji(opt.emoji)}
                                     className={`w-16 h-16 rounded-2xl text-3xl flex items-center justify-center transition-all duration-200 border-2 ${
                                         selectedEmoji === opt.emoji
-                                        ? 'bg-purple-600/20 border-purple-500 scale-110 shadow-[0_0_15px_rgba(168,85,247,0.5)] z-10'
+                                        ? 'bg-blue-600/20 border-blue-500 scale-110 shadow-[0_0_15px_rgba(0,0,255,0.5)] z-10'
                                         : 'bg-slate-800 border-transparent hover:bg-slate-700 opacity-80 hover:opacity-100'
                                     }`}
                                 >
@@ -839,7 +838,7 @@ export default function Home() {
                             id="sendCastCheckbox"
                             checked={sendCast}
                             onChange={(e) => setSendCast(e.target.checked)}
-                            className="form-checkbox h-4 w-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
+                            className="form-checkbox h-4 w-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
                         />
                         <label htmlFor="sendCastCheckbox" className="text-slate-300 select-none">Send cast</label>
                     </div>
@@ -851,9 +850,9 @@ export default function Home() {
                                 type="text"
                                 maxLength={MAX_MOOD_TEXT_LENGTH}
                                 placeholder="Add a note... (optional)"
-                                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 pr-14 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all"
+                                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 pr-14 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" // Renk düzeltildi
                                 value={statusText}
-                                onChange={(e) => setStatusText(e.target.value)}
+                                onChange={(e) => setStatusText(e.target.value)} // Buradaki hata düzeltildi
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
                                 {statusText.length}/{MAX_MOOD_TEXT_LENGTH}
@@ -864,7 +863,7 @@ export default function Home() {
                             <Button variant="secondary" className="flex-1" onClick={handleCloseAllPanels} disabled={isSubmitting}>
                                 Cancel
                             </Button>
-                            <Button className="flex-1" onClick={handleAddMood} isLoading={isSubmitting} disabled={isPostVibeButtonDisabled}>
+                            <Button className="flex-1 bg-blue-600 hover:bg-blue-500" onClick={handleAddMood} isLoading={isSubmitting} disabled={isPostVibeButtonDisabled}>
                                 Add to Map
                             </Button>
                         </div>
@@ -882,7 +881,7 @@ export default function Home() {
             <div className="relative">
               <button
                   onClick={handleMapButtonClick} 
-                  className={`p-1.5 rounded-full transition-all ${view === ViewState.MAP || view === ViewState.CLUSTER_LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                  className={`p-1.5 rounded-full transition-all ${view === ViewState.MAP || view === ViewState.CLUSTER_LIST ? 'bg-slate-700 text-blue-400' : 'text-slate-400 hover:text-white'}`}
                   title="Switch to Map View / Open Preset Locations"
               >
                   <MapIcon size={24} />
@@ -917,7 +916,7 @@ export default function Home() {
                     setShowPresetLocations(false); 
                     setSelectedClusterMoods(null); 
                 }}
-                className={`bg-purple-600 hover:bg-purple-500 text-white p-4 rounded-full shadow-lg shadow-purple-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
+                className={`bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg shadow-blue-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
             >
                 <Plus size={28} strokeWidth={3} />
             </button>
@@ -925,7 +924,7 @@ export default function Home() {
             {/* 5. List Görünümüne Geçiş Butonu */}
             <button
                 onClick={handleListViewToggle} 
-                className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-purple-400' : 'text-slate-400 hover:text-white'}`}
+                className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-blue-400' : 'text-slate-400 hover:text-white'}`}
                 title="Switch to List View"
             >
                 <List size={24} />
