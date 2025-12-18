@@ -751,11 +751,17 @@ export default function Home() {
          {/* Küme Listesi Yan Paneli */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
+                // Orjinal boyutlandırmalar ve bg-transparent geri getirildi
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} // Bu paneli tıklayarak kapatmak için
             >
-                <h3 className="text-base font-bold text-blue-400 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
-                    {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
+                <h3 className={`text-base font-bold text-blue-400 text-center truncate shrink-0 md:text-sm py-2`}> 
+                    {/* YENİ DEĞİŞİKLİK: Metin vurgusu için span eklendi */}
+                    <span className={`inline-block 
+                                bg-slate-900/80 backdrop-blur-sm 
+                                px-3 py-1 rounded-md shadow-sm border border-slate-700`}>
+                        {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
+                    </span>
                 </h3>
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-1" onClick={(e) => e.stopPropagation()}>
                     <MoodFeed

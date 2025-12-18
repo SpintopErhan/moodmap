@@ -11,6 +11,12 @@ import defaultIcon from 'leaflet/dist/images/marker-icon.png';
 import defaultIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import defaultShadow from 'leaflet/dist/images/marker-shadow.png';
 
+// 1. YENİ EKLENTİ: Gündüz ve Gece Harita Teması URL'leri
+const DAY_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const NIGHT_TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const ATTRIBUTION_TEXT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+
 // Create default Leaflet icon
 const DefaultIcon = L.icon({
   iconUrl: defaultIcon.src,
@@ -427,12 +433,32 @@ export default function Map({
   // YENİ STATE: Haritanın anlık zoom seviyesini tutar
   const [currentZoom, setCurrentZoom] = useState(1); // Başlangıç zoom seviyesiyle veya varsayılanla başlat
 
+  // 2. YENİ EKLENTİ: Dinamik tema için state
+  const [currentTileUrl, setCurrentTileUrl] = useState(NIGHT_TILE_URL); 
+
   useEffect(() => {
     if (typeof window !== 'undefined' && L.Marker.prototype.options.icon !== DefaultIcon) {
         L.Marker.prototype.options.icon = DefaultIcon;
         console.log("[Map] Leaflet default marker icon set on client.");
     }
   }, []);
+
+  // 3. GÜNCELLENMİŞ EKLENTİ: Zamanı kontrol eden ve temayı BİR KEZ ayarlayan useEffect
+  useEffect(() => {
+    const updateTheme = () => {
+        const hour = new Date().getHours();
+        // Gündüz saatleri: 06:00 (dahil) - 18:00 (hariç)
+        const isDayTime = hour >= 6 && hour < 18;
+        const newThemeUrl = isDayTime ? DAY_TILE_URL : NIGHT_TILE_URL;
+
+        setCurrentTileUrl(newThemeUrl); // Tema değişmese bile günceller, çünkü sadece bir kez çalışacak
+        console.log(`[Map] Tema ayarlandı: Yerel saat ${hour}:00, Tema: ${isDayTime ? 'GÜNDÜZ' : 'GECE'}`);
+    };
+
+    // Bileşen yüklendiğinde temayı ayarla (sadece bir kez çalışır)
+    updateTheme();
+
+  }, []); // Boş dependency array, sadece mount'ta çalışır ve bir kez ayarlar
 
   const setInitialLocation = useCallback((location: LocationData) => {
     if (!hasLocationBeenSet) {
@@ -546,8 +572,8 @@ export default function Map({
         }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution={ATTRIBUTION_TEXT} // Attributon metnini sabit bir değişkenden al
+          url={currentTileUrl} // <<< YENİ: Dinamik olarak belirlenen URL'yi kullan
           noWrap={true}
         />
         
