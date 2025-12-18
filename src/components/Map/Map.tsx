@@ -235,7 +235,25 @@ const REMOTE_LOCATIONS: LocationData[] = [
   { name: "Sahara Desert", coords: [23.4514, 15.5369], zoom: 5, popupText: "Location permission denied: Sahara Desert", locationType: 'fallback' },
   { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
   { name: "Greenland", coords: [71.7069, -42.6043], zoom: 4, popupText: "Location permission denied: Greenland", locationType: 'fallback' },
-  { name: "Mariana Trench", coords: [11.3650, 142.2500], zoom: 5, popupText: "Location permission denied: Mariana Trench", locationType: 'fallback' },
+  { name: "Mariana Trench", coords: [11.3650, 142.2500], zoom: 4, popupText: "Location permission denied: Mariana Trench", locationType: 'fallback' },
+
+  // 1. Yüksek Rakımlı / Zorlu Bölgeler
+  { name: "Mount Everest Base Camp", coords: [28.0000, 86.9000], zoom: 7, popupText: "Location permission denied: Mount Everest Base Camp", locationType: 'fallback' },
+  // Açıklama: Dünyanın çatısı, izolasyon ve meydan okuma hissi verir.
+
+  // 2. Sürreal Manzaralar
+  { name: "Salar de Uyuni, Bolivia", coords: [-20.2000, -67.4500], zoom: 6, popupText: "Location permission denied: Salar de Uyuni", locationType: 'fallback' },
+  // Açıklama: Dünyanın en büyük tuz gölü, ayna etkisiyle bilinir, gerçeküstü bir deneyim sunar.
+  { name: "Danakil Depression, Ethiopia", coords: [14.2333, 40.3000], zoom: 7, popupText: "Location permission denied: Danakil Depression", locationType: 'fallback' },
+  // Açıklama: Dünyanın en sıcak ve jeolojik olarak en aktif yerlerinden biri, renkli hidrotermal alanlar.
+
+  // 3. Uzak Adalar / Antik Medeniyet Kalıntıları
+  { name: "Easter Island, Chile", coords: [-27.1167, -109.3667], zoom: 6, popupText: "Location permission denied: Easter Island", locationType: 'fallback' },
+  // Açıklama: Pasifik Okyanusu'nun ortasında, Moai heykelleriyle ünlü, gizemli bir ada.
+
+  // 4. Farklı Bir Kutup Noktası
+  { name: "North Pole", coords: [90.0000, 0.0000], zoom: 3, popupText: "Location permission denied: North Pole", locationType: 'fallback' },
+  // Açıklama: Coğrafi Kuzey Kutbu, Antarktika'dan farklı olarak buzlarla kaplı bir okyanus, benzer ancak farklı bir izolasyon hissi.
 ];
 
 const getRandomRemoteLocation = (): LocationData => {

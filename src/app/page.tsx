@@ -480,13 +480,13 @@ export default function Home() {
         setUserLastMoodLocation({
             name: moodToPost.locationLabel || "Unknown Location",
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL, 
+            zoom: DEFAULT_ZOOM_LEVEL, //currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL karışıklık yarattığı için sadece DEFAULT_ZOOM_LEVEL kullanıldı
             popupText: moodToPost.text || moodToPost.emoji,
             locationType: currentDeterminedLocationData?.locationType || 'fallback'
         });
         setMapRecenterTrigger({
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: DEFAULT_ZOOM_LEVEL, 
+            zoom: DEFAULT_ZOOM_LEVEL, //currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL karışıklık yarattığı için sadece DEFAULT_ZOOM_LEVEL kullanıldı
             animate: false,
             purpose: 'userLocation', 
         });
