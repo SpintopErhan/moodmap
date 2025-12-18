@@ -754,7 +754,7 @@ export default function Home() {
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
                 onClick={handleCloseAllPanels} // Bu paneli tıklayarak kapatmak için
             >
-                <h3 className="text-base font-bold text-blue-300 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
+                <h3 className="text-base font-bold text-blue-400 text-center truncate px-4 pb-0 shrink-0 md:text-sm"> 
                     {selectedClusterMoods[0]?.locationLabel || "Unknown Location"} ({selectedClusterMoods.length})
                 </h3>
                 <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-1" onClick={(e) => e.stopPropagation()}>
