@@ -10,7 +10,13 @@
     "webhookUrl": "https://moodmap-lake.vercel.app/api/webhook",
     "subtitle": "Share your mood",
     "description": "Share your mood to world",
-    "primaryCategory": "social"
+    "primaryCategory": "social",
+    "tags": [
+      "social",
+      "community",
+      "entertainment",
+      "map"
+    ]
   },
   "accountAssociation": {
     "header": "eyJmaWQiOjQ4MjAxMSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweGExREFERWIwZDFmYWUyQTExQmNjMmQ3NWYzY0ZhYjA4ODQyYUVCYTUifQ",
