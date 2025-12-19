@@ -8,6 +8,10 @@ const inter = Inter({ subsets: ['latin'] }); // 'inter' burada tanımlanıyor
 export const metadata: Metadata = {
   title: 'MoodMap MiniApp',
   description: 'Farcaster MiniApp for ModdMap',
+  // 👇 BASE APP ID BURAYA EKLENİYOR 👇
+  other: {
+    'base:app_id': '6944e10cd19763ca26ddc4d2',
+  },
 };
 
 export default function RootLayout({
