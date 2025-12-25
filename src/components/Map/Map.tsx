@@ -239,27 +239,54 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, cur
 
 const REMOTE_LOCATIONS: LocationData[] = [
   { name: "Sahara Desert", coords: [23.4514, 15.5369], zoom: 5, popupText: "Location permission denied: Sahara Desert", locationType: 'fallback' },
-  { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 3, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
-  { name: "Greenland", coords: [71.7069, -42.6043], zoom: 4, popupText: "Location permission denied: Greenland", locationType: 'fallback' },
-  { name: "Mariana Trench", coords: [11.3650, 142.2500], zoom: 4, popupText: "Location permission denied: Mariana Trench", locationType: 'fallback' },
+  { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 5, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
+  { name: "Greenland", coords: [71.7069, -42.6043], zoom: 5, popupText: "Location permission denied: Greenland", locationType: 'fallback' },
 
   // 1. Yüksek Rakımlı / Zorlu Bölgeler
-  { name: "Mount Everest Base Camp", coords: [28.0000, 86.9000], zoom: 7, popupText: "Location permission denied: Mount Everest Base Camp", locationType: 'fallback' },
+  { name: "Mount Everest Base Camp", coords: [28.0000, 86.9000], zoom: 5, popupText: "Location permission denied: Mount Everest Base Camp", locationType: 'fallback' },
   // Açıklama: Dünyanın çatısı, izolasyon ve meydan okuma hissi verir.
 
   // 2. Sürreal Manzaralar
-  { name: "Salar de Uyuni, Bolivia", coords: [-20.2000, -67.4500], zoom: 6, popupText: "Location permission denied: Salar de Uyuni", locationType: 'fallback' },
+  { name: "Salar de Uyuni, Bolivia", coords: [-20.2000, -67.4500], zoom: 5, popupText: "Location permission denied: Salar de Uyuni", locationType: 'fallback' },
   // Açıklama: Dünyanın en büyük tuz gölü, ayna etkisiyle bilinir, gerçeküstü bir deneyim sunar.
-  { name: "Danakil Depression, Ethiopia", coords: [14.2333, 40.3000], zoom: 7, popupText: "Location permission denied: Danakil Depression", locationType: 'fallback' },
+  { name: "Danakil Depression, Ethiopia", coords: [14.2333, 40.3000], zoom: 5, popupText: "Location permission denied: Danakil Depression", locationType: 'fallback' },
   // Açıklama: Dünyanın en sıcak ve jeolojik olarak en aktif yerlerinden biri, renkli hidrotermal alanlar.
 
   // 3. Uzak Adalar / Antik Medeniyet Kalıntıları
-  { name: "Easter Island, Chile", coords: [-27.1167, -109.3667], zoom: 6, popupText: "Location permission denied: Easter Island", locationType: 'fallback' },
+  { name: "Easter Island, Chile", coords: [-27.1167, -109.3667], zoom: 5, popupText: "Location permission denied: Easter Island", locationType: 'fallback' },
   // Açıklama: Pasifik Okyanusu'nun ortasında, Moai heykelleriyle ünlü, gizemli bir ada.
 
   // 4. Farklı Bir Kutup Noktası
-  { name: "North Pole", coords: [90.0000, 0.0000], zoom: 3, popupText: "Location permission denied: North Pole", locationType: 'fallback' },
+  { name: "North Pole", coords: [90.0000, 10.0000], zoom: 5, popupText: "Location permission denied: North Pole", locationType: 'fallback' },
   // Açıklama: Coğrafi Kuzey Kutbu, Antarktika'dan farklı olarak buzlarla kaplı bir okyanus, benzer ancak farklı bir izolasyon hissi.
+
+  // --- Yeni Eklenen Öneriler ---
+
+  // 5. Antik Şehirler ve Medeniyet İzleri
+  { name: "Petra, Jordan", coords: [30.3285, 35.4444], zoom: 5, popupText: "Location permission denied: Petra", locationType: 'fallback' },
+  // Açıklama: Kaya oyması mimarisiyle ünlü, antik Nebati şehri. UNESCO Dünya Mirası.
+  { name: "Machu Picchu, Peru", coords: [-13.1631, -72.5450], zoom: 5, popupText: "Location permission denied: Machu Picchu", locationType: 'fallback' },
+  // Açıklama: İnkaların bulutların üzerindeki kayıp şehri. UNESCO Dünya Mirası.
+  { name: "Angkor Wat, Cambodia", coords: [13.4125, 103.8670], zoom: 5, popupText: "Location permission denied: Angkor Wat", locationType: 'fallback' },
+  // Açıklama: Kamboçya'nın en büyük dini anıtı, etkileyici tapınak kompleksi. UNESCO Dünya Mirası.
+  { name: "Great Wall of China", coords: [40.4319, 116.5704], zoom: 5, popupText: "Location permission denied: Great Wall of China", locationType: 'fallback' },
+  // Açıklama: İnsanlık tarihinin en büyük yapılarından biri. UNESCO Dünya Mirası.
+
+  // 6. Doğal Harikalar ve Eşsiz Coğrafyalar
+  { name: "Grand Canyon, USA", coords: [36.1000, -112.1000], zoom: 5, popupText: "Location permission denied: Grand Canyon", locationType: 'fallback' },
+  // Açıklama: Colorado Nehri tarafından oyulmuş devasa kanyon, nefes kesici manzaralar. UNESCO Dünya Mirası.
+  { name: "Victoria Falls, Zambia/Zimbabwe", coords: [-17.9243, 25.8572], zoom: 5, popupText: "Location permission denied: Victoria Falls", locationType: 'fallback' },
+  // Açıklama: Dünyanın en büyük şelalelerinden biri, "Gürleyen Duman" olarak da bilinir. UNESCO Dünya Mirası.
+  { name: "Galapagos Islands, Ecuador", coords: [-0.9538, -90.9656], zoom: 5, popupText: "Location permission denied: Galapagos Islands", locationType: 'fallback' },
+  // Açıklama: Eşsiz biyoçeşitliliği ve evrim çalışmalarıyla ünlü takımadalar. UNESCO Dünya Mirası.
+
+  // 7. Gizemli ve Uzak Bölgeler
+  { name: "Timbuktu, Mali", coords: [16.7667, -3.0000], zoom: 5, popupText: "Location permission denied: Timbuktu", locationType: 'fallback' },
+  // Açıklama: Sahra Çölü'nün kenarında tarihi bir ticaret ve ilim merkezi. UNESCO Dünya Mirası.
+  { name: "Svalbard, Norway", coords: [78.0000, 16.0000], zoom: 5, popupText: "Location permission denied: Svalbard", locationType: 'fallback' },
+  // Açıklama: Kuzey Kutbu'na yakın, buzullar, kutup ayıları ve eşsiz arktik doğa.
+  { name: "Socotra Island, Yemen", coords: [12.5000, 53.9500], zoom: 5, popupText: "Location permission denied: Socotra Island", locationType: 'fallback' },
+  // Açıklama: "Hint Okyanusu'nun Galapagos'u" olarak bilinen, kendine özgü bitki örtüsü ve ejderha kanı ağaçları. UNESCO Dünya Mirası.
 ];
 
 const getRandomRemoteLocation = (): LocationData => {

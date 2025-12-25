@@ -1,3 +1,5 @@
+//src/hooks/useFarcasterMiniApp.ts
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";

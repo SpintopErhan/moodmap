@@ -31,18 +31,17 @@ interface PresetLocation {
 }
 
 const PRESET_LOCATIONS: PresetLocation[] = [
-  { id: 'istanbul', name: 'Istanbul', coords: [41.0082, 28.9784], zoom: 7 },
-  { id: 'berlin', name: 'Berlin', coords: [52.5200, 13.4050], zoom: 7 },
-  { id: 'paris', name: 'Paris', coords: [48.8566, 2.3522], zoom: 7 },
-  { id: 'london', name: 'London', coords: [51.5074, 0.1278], zoom: 7 },
-  { id: 'barcelona', name: 'Barcelona', coords: [41.3851, 2.1734], zoom: 7 },
-  { id: 'moscow', name: 'Moscow', coords: [55.7558, 37.6173], zoom: 7 },
-  { id: 'beijing', name: 'Beijing', coords: [39.9042, 116.4074], zoom: 7 },
-  { id: 'tokyo', name: 'Tokyo', coords: [35.6762, 139.6503], zoom: 7 },
-  { id: 'marrakech', name: 'Marrakech', coords: [31.6295, -7.9813], zoom: 7 }, 
-  { id: 'cape_town', name: 'Cape Town', coords: [-33.9249, 18.4241], zoom: 7 }, 
-  { id: 'new_york', name: 'New York', coords: [40.7128, -74.0060], zoom: 7 },
-  { id: 'world', name: 'World', coords: [5, 5], zoom: 1 }, 
+  { id: 'world', name: 'World', coords: [0, 0], zoom: 1 }, // Daha genel bir dünya merkezi ve zoom
+  { id: 'north_america', name: 'North America', coords: [40.0, -100.0], zoom: 5 },
+  { id: 'south_america', name: 'South America', coords: [-20.0, -60.0], zoom: 5 },
+  { id: 'western_europe', name: 'Western Europe', coords: [48.0, 4.0], zoom: 5 },
+  { id: 'central_eastern_europe', name: 'Central Europe', coords: [50.0, 20.0], zoom: 5 },
+  { id: 'middle_east_north_africa', name: 'North Africa', coords: [28.0, 38.0], zoom: 5 },
+  { id: 'sub_saharan_africa', name: 'Saharan Africa', coords: [0.0, 20.0], zoom: 5 },
+  { id: 'south_asia', name: 'South Asia', coords: [22.0, 78.0], zoom: 5 },
+  { id: 'east_asia', name: 'East Asia', coords: [35.0, 125.0], zoom: 5 },
+  { id: 'southeast_asia', name: 'Southeast Asia', coords: [10.0, 105.0], zoom: 5 },
+  { id: 'oceania', name: 'Oceania', coords: [-25.0, 135.0], zoom: 5 },
 ];
 
 interface SupabaseMood {
