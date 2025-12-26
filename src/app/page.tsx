@@ -9,7 +9,10 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS } from '@/types/app';
-import { Plus, Map as MapIcon, List, MapPin } from 'lucide-react'; 
+import { Plus, Map as MapIcon, List, MapPin, XCircle, RotateCw } from 'lucide-react'; 
+
+// YENİ: RANDOM_LOCATIONS'ı ve PresetLocation arayüzünü src/lib/randomloc'tan import ediyoruz.
+import { RANDOM_LOCATIONS, PresetLocation } from '@/lib/randomloc';
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
   ssr: false,
@@ -17,7 +20,6 @@ const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
 
 const MAX_MOOD_TEXT_LENGTH = 48;
 
-// YENİ EKLENTİ: Ortak panel stil sınıfları
 const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded-lg shadow-md border border-slate-700";
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
@@ -34,26 +36,28 @@ const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((
   };
 };
 
-interface PresetLocation {
-  id: string;
-  name: string;
-  coords: [number, number]; // [latitude, longitude]
-  zoom: number; // Bu konuma gidildiğinde haritanın zoom seviyesi
-}
+// KALDIRILDI: PresetLocation interface'i artık src/lib/randomloc'tan geliyor.
+// interface PresetLocation {
+//   id: string;
+//   name: string;
+//   coords: [number, number]; // [latitude, longitude]
+//   zoom: number; // Bu konuma gidildiğinde haritanın zoom seviyesi
+// }
 
-const PRESET_LOCATIONS: PresetLocation[] = [
-  { id: 'world', name: 'World', coords: [0, 0], zoom: 1 }, // Daha genel bir dünya merkezi ve zoom
-  { id: 'north_america', name: 'North America', coords: [40.0, -100.0], zoom: 5 },
-  { id: 'south_america', name: 'South America', coords: [-20.0, -60.0], zoom: 5 },
-  { id: 'western_europe', name: 'Western Europe', coords: [48.0, 4.0], zoom: 5 },
-  { id: 'central_eastern_europe', name: 'Central Europe', coords: [50.0, 20.0], zoom: 5 },
-  { id: 'middle_east_north_africa', name: 'North Africa', coords: [28.0, 38.0], zoom: 5 },
-  { id: 'sub_saharan_africa', name: 'Saharan Africa', coords: [0.0, 20.0], zoom: 5 },
-  { id: 'south_asia', name: 'South Asia', coords: [22.0, 78.0], zoom: 5 },
-  { id: 'east_asia', name: 'East Asia', coords: [35.0, 125.0], zoom: 5 },
-  { id: 'southeast_asia', name: 'Southeast Asia', coords: [10.0, 105.0], zoom: 5 },
-  { id: 'oceania', name: 'Oceania', coords: [-25.0, 135.0], zoom: 5 },
-];
+// KALDIRILDI: PRESET_LOCATIONS dizisi artık src/lib/randomloc'tan geliyor (RANDOM_LOCATIONS adıyla).
+// const PRESET_LOCATIONS: PresetLocation[] = [
+//   { id: 'world', name: 'World', coords: [0, 0], zoom: 1 }, 
+//   { id: 'north_america', name: 'North America', coords: [40.0, -100.0], zoom: 5 },
+//   { id: 'south_america', name: 'South America', coords: [-20.0, -60.0], zoom: 5 },
+//   { id: 'western_europe', name: 'Western Europe', coords: [48.0, 4.0], zoom: 5 },
+//   { id: 'central_eastern_europe', name: 'Central Europe', coords: [50.0, 20.0], zoom: 5 },
+//   { id: 'middle_east_north_africa', name: 'North Africa', coords: [28.0, 38.0], zoom: 5 },
+//   { id: 'sub_saharan_africa', name: 'Saharan Africa', coords: [0.0, 20.0], zoom: 5 },
+//   { id: 'south_asia', name: 'South Asia', coords: [22.0, 78.0], zoom: 5 },
+//   { id: 'east_asia', name: 'East Asia', coords: [35.0, 125.0], zoom: 5 },
+//   { id: 'southeast_asia', name: 'Southeast Asia', coords: [10.0, 105.0], zoom: 5 },
+//   { id: 'oceania', name: 'Oceania', coords: [-25.0, 135.0], zoom: 5 },
+// ];
 
 interface SupabaseMood {
   uuid: string;
@@ -66,7 +70,8 @@ interface SupabaseMood {
   emoji: string;
   user_note: string;
   mood_date: string; 
-  cast: boolean; // Supabase'den çekilen 'cast' sütunu için
+  cast: boolean; 
+  randomloc: boolean; 
 }
 
 const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
@@ -80,6 +85,8 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
     userId: dbMood.fid.toString(), 
     username: dbMood.username,
     fid: dbMood.fid, 
+    cast: dbMood.cast,      
+    randomloc: dbMood.randomloc, 
   };
 };
 
@@ -108,7 +115,8 @@ export default function Home() {
   const [statusText, setStatusText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [castError, setCastError] = useState<string | null>(null); 
-  const [sendCast, setSendCast] = useState(true); // Cast gönderme onay kutusunun durumu
+  const [sendCast, setSendCast] = useState(true); 
+  const [isRandomLocation, setIsRandomLocation] = useState(false); 
 
   const [selectedClusterMoods, setSelectedClusterMoods] = useState<Mood[] | null>(null); 
 
@@ -125,16 +133,12 @@ export default function Home() {
   const [anonFid, setAnonFid] = useState<number | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false); 
   const [isMapReady, setIsMapReady] = useState(false); 
-  // Map bileşenine göndermek üzere kullanıcının belirlenmiş FID'si
   const [userEffectiveFid, setUserEffectiveFid] = useState<number | null>(null); 
 
-  // Konum girişi için state
   const [customLocationInput, setCustomLocationInput] = useState<string>('');
-  // Geocoding ile elde edilen veriyi saklar.
   const [geocodedInputLocationData, setGeocodedInputLocationData] = useState<LocationData | null>(null);
 
 
-  // Geolocation ve Anonim FID yükleme
   useEffect(() => {
     if (typeof window !== 'undefined') {
       import('@/lib/geolocation').then(mod => {
@@ -163,15 +167,14 @@ export default function Home() {
   const fetchAllMoods = useCallback(async () => {
     console.log("[page.tsx] Fetching all moods from Supabase...");
     
-    // Sadece son 3 günün moodlarını çekmek için filtre eklendi
     const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3); // 3 gün öncesinin tarihini hesapla
-    const threeDaysAgoISO = threeDaysAgo.toISOString(); // ISO formatına çevir
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3); 
+    const threeDaysAgoISO = threeDaysAgo.toISOString(); 
 
     const { data, error } = await supabase
       .from('moods')
-      .select('*, cast') // cast sütununu da seçiyoruz
-      .gte('mood_date', threeDaysAgoISO); // mood_date sütununda 3 gün öncesine eşit veya daha yeni olanları getir
+      .select('*, cast, randomloc') 
+      .gte('mood_date', threeDaysAgoISO); 
 
     if (error) {
       console.error("Error fetching all moods:", error);
@@ -186,7 +189,6 @@ export default function Home() {
     return [];
   }, []);
 
-  // initializeAppData için bağımlılık dizisi güncellendi.
   useEffect(() => {
     const initializeAppData = async () => {
       if (status === 'loading' || anonFid === null) { 
@@ -208,7 +210,6 @@ export default function Home() {
         effectiveFid = 0; 
       }
       
-      // Belirlenen effectiveFid'i state'e kaydet
       setUserEffectiveFid(effectiveFid);
 
       if (effectiveFid === null) {
@@ -222,7 +223,7 @@ export default function Home() {
       console.log(`[page.tsx] Checking for user's mood with FID: ${effectiveFid}`);
       const { data: userMoodData, error: userMoodError } = await supabase
         .from('moods')
-        .select('*, cast') // cast sütununu da çekiyoruz
+        .select('*, cast, randomloc') 
         .eq('fid', effectiveFid)
         .single(); 
 
@@ -234,13 +235,15 @@ export default function Home() {
         console.log("[page.tsx] User's initial mood found:", userMoodData);
         const userAppMood = mapSupabaseMoodToAppMood(userMoodData);
         setLastLocallyPostedMood(userAppMood); 
-        setSendCast(userMoodData.cast); // Kullanıcının son mood'undan cast durumunu al
+        setSendCast(userMoodData.cast); 
+        setIsRandomLocation(userMoodData.randomloc ?? false); 
+
         setUserLastMoodLocation({ 
             name: userAppMood.locationLabel || "Unknown Location",
             coords: [userAppMood.location.lat, userAppMood.location.lng],
             zoom: DEFAULT_ZOOM_LEVEL, 
             popupText: userAppMood.text || userAppMood.emoji,
-            locationType: 'user' 
+            locationType: userMoodData.randomloc ? 'preset' : 'user' 
         });
         setMapRecenterTrigger({
             coords: [userAppMood.location.lat, userAppMood.location.lng],
@@ -252,6 +255,8 @@ export default function Home() {
       } else {
         console.log("[page.tsx] No mood found for current user, opening Add Mood screen.");
         setView(ViewState.ADD); 
+        setSendCast(true); 
+        setIsRandomLocation(false); 
       }
 
       const allMoods = await fetchAllMoods();
@@ -274,7 +279,8 @@ export default function Home() {
     setView, 
     setIsDataLoaded, 
     setMoods,
-    setSendCast, 
+    setSendCast,       
+    setIsRandomLocation, 
     setUserEffectiveFid, 
   ]);
 
@@ -282,110 +288,47 @@ export default function Home() {
   const handleCloseAllPanels = useCallback(() => {
     if (view === ViewState.MAP) { 
         setSelectedClusterMoods(null);
-        // setShowPresetLocations'ı buradan kaldırdık çünkü zaten bağımlılık dizisinde değil ve ESLint uyarı veriyordu.
-        // setShowPresetLocations(false); // Bu çağrı burada kalmalı
         console.log("[page.tsx] Already on map, direct close of residual panels.");
         return;
     }
     
     setView(ViewState.MAP); 
     setSelectedClusterMoods(null); 
-    setShowPresetLocations(false); // Bu çağrı burada kalmalı
+    setShowPresetLocations(false); 
     setSelectedEmoji(MOOD_OPTIONS[0].emoji); 
     setStatusText(''); 
     setIsSubmitting(false); 
     setCastError(null); 
     setSendCast(true); 
-    // customLocationInput ve geocodedInputLocationData'yı sıfırla
+    setIsRandomLocation(false); 
     setCustomLocationInput('');
     setGeocodedInputLocationData(null);
-  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData]);
+  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setIsRandomLocation, setCustomLocationInput, setGeocodedInputLocationData]); 
 
 
-   // --- KALDIRILDI: handleInitialLocationDetermined callback'i tamamen kaldırıldı ---
-   /*
-   const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
-      if (!geolocationFunctions) {
-        console.warn("[page.tsx] Geolocation functions not yet loaded, skipping initial location determination.");
-        return; 
-      }
-
-      if (!locationData) {
-        setCurrentDeterminedLocationData(null);
-        console.log("[page.tsx] Location determination failed or denied.");
-        return;
-      }
-
-      console.log("[page.tsx] Initial location data from Map:", locationData);
-
-      const [preciseLat, preciseLng] = locationData.coords;
-      let finalLocationLabel: string = "Unknown Location";
-      let geocodedCoords: [number, number] = [preciseLat, preciseLng]; 
-
-      if (locationData.locationType === 'user') {
-        try {
-          const geocodedResult = await geolocationFunctions.reverseGeocode(preciseLat, preciseLng);
-          if (geocodedResult) {
-            finalLocationLabel = geocodedResult;
-            const forwardGeocodedResult = await geolocationFunctions.forwardGeocode(geocodedResult);
-            if (forwardGeocodedResult) {
-              geocodedCoords = forwardGeocodedResult; 
-            } else {
-              console.warn("[page.tsx] Forward geocoding failed for user location label, falling back to precise coordinates.");
-            }
-          } else {
-            console.warn("[page.tsx] Reverse geocoding returned no label for user location, using 'Unknown Location'. Falling back to precise coordinates.");
-          }
-        } catch (error) {
-          console.error("[page.tsx] Error during geocoding process for user location:", error);
-        }
-      } else {
-        finalLocationLabel = locationData.name || "Unknown Location";
-        geocodedCoords = locationData.coords; 
-      }
-
-      setCurrentDeterminedLocationData({
-        coords: geocodedCoords, 
-        timestamp: locationData.timestamp,
-        accuracy: locationData.accuracy,
-        locationLabel: finalLocationLabel, 
-        zoom: locationData.zoom ?? DEFAULT_ZOOM_LEVEL, 
-        locationType: locationData.locationType,
-      });
-
-      setIsMapCenteredOnUserLocation(true); 
-    }, [
-      geolocationFunctions, 
-      setCurrentDeterminedLocationData, 
-      setIsMapCenteredOnUserLocation, 
-    ]);
-    */
-
-  // Konum inputu için geocoding fonksiyonu
   const searchLocationFromInput = useCallback(async (locationText: string) => {
     if (!geolocationFunctions || !locationText.trim()) {
       setGeocodedInputLocationData(null);
-      setCastError(null); // Başarısız veya boş inputta hata mesajını temizle
+      setCastError(null); 
       return;
     }
 
     console.log(`[page.tsx] Searching for location: "${locationText}"`);
-    setCastError(null); // Önceki hataları temizle
+    setCastError(null); 
 
     try {
       const coords = await geolocationFunctions.forwardGeocode(locationText.trim());
 
       if (coords) {
         console.log(`[page.tsx] Forward geocoded "${locationText}" to:`, coords);
-        // Şimdi standart bir etiket almak için ters geocoding yap
         const reversedLabel = await geolocationFunctions.reverseGeocode(coords[0], coords[1]);
 
         setGeocodedInputLocationData({
           coords: coords,
           timestamp: Date.now(),
-          locationLabel: reversedLabel || locationText.trim(), // Mevcutsa ters etiket, yoksa orijinal girdi
+          locationLabel: reversedLabel || locationText.trim(), 
           zoom: DEFAULT_ZOOM_LEVEL,
-          locationType: 'input', // Bu verinin kullanıcı inputundan geldiğini belirt
+          locationType: 'input', 
         });
         console.log(`[page.tsx] Geocoded input location set: ${reversedLabel || locationText.trim()}`);
       } else {
@@ -400,18 +343,82 @@ export default function Home() {
     }
   }, [geolocationFunctions, setCastError]);
 
-  // searchLocationFromInput için debounced versiyon
   const debouncedSearchLocation = useMemo(() => debounce(searchLocationFromInput, 800), [searchLocationFromInput]);
 
+  // YENİ REVİZYON: RANDOM_LOCATIONS'ı kullanıyoruz
+  const handleSelectRandomPresetLocation = useCallback(() => {
+    if (RANDOM_LOCATIONS.length === 0) { 
+        setCastError("No random locations available.");
+        setGeocodedInputLocationData(null);
+        setCustomLocationInput('');
+        return;
+    }
+    const randomIndex = Math.floor(Math.random() * RANDOM_LOCATIONS.length); 
+    const randomPreset = RANDOM_LOCATIONS[randomIndex]; 
+
+    setCustomLocationInput(randomPreset.name);
+    setGeocodedInputLocationData({
+        coords: randomPreset.coords,
+        timestamp: Date.now(),
+        locationLabel: randomPreset.name,
+        zoom: randomPreset.zoom,
+        locationType: 'preset',
+    });
+    setCastError(null);
+  }, [setCustomLocationInput, setGeocodedInputLocationData, setCastError]);
+
+
+  useEffect(() => {
+    if (view === ViewState.ADD) {
+      setCastError(null); 
+
+      if (lastLocallyPostedMood) {
+        setCustomLocationInput(lastLocallyPostedMood.locationLabel || '');
+        setGeocodedInputLocationData({
+          coords: [lastLocallyPostedMood.location.lat, lastLocallyPostedMood.location.lng],
+          timestamp: lastLocallyPostedMood.timestamp,
+          locationLabel: lastLocallyPostedMood.locationLabel,
+          zoom: DEFAULT_ZOOM_LEVEL,
+          locationType: lastLocallyPostedMood.randomloc ? 'preset' : 'user', 
+        });
+        setStatusText(lastLocallyPostedMood.text || ''); 
+        setSelectedEmoji(lastLocallyPostedMood.emoji); 
+        setSendCast(lastLocallyPostedMood.cast ?? true); 
+        setIsRandomLocation(lastLocallyPostedMood.randomloc ?? false); 
+
+      } else {
+        setCustomLocationInput('');
+        setStatusText('');
+        setSelectedEmoji(MOOD_OPTIONS[0].emoji);
+        setGeocodedInputLocationData(null);
+        setSendCast(true); 
+        setIsRandomLocation(false); 
+      }
+    } 
+  }, [
+    view, 
+    lastLocallyPostedMood, 
+    setCustomLocationInput, 
+    setStatusText, 
+    setSelectedEmoji, 
+    setGeocodedInputLocationData, 
+    setSendCast, 
+    setIsRandomLocation, 
+    setCastError,
+  ]);
+
+  const handleClearLocationInput = useCallback(() => {
+    setCustomLocationInput('');
+    setGeocodedInputLocationData(null);
+    setCastError(null);
+  }, [setCustomLocationInput, setGeocodedInputLocationData, setCastError]);
 
   const handleAddMood = useCallback(async () => {
-    // YENİ KONTROL: Eğer customLocationInput boşsa hata verelim
-    if (!customLocationInput.trim()) {
+    if (!isRandomLocation && !customLocationInput.trim()) {
         setCastError("Please enter a location to share your mood.");
         return;
     }
 
-    // YENİ KONTROL: Eğer geocodedInputLocationData yoksa (konum bulunamadıysa) hata verelim
     if (!geocodedInputLocationData) {
         setCastError("Please enter a valid location and wait for it to be identified.");
         return;
@@ -447,7 +454,6 @@ export default function Home() {
     const currentUsername = user?.username || 'Anonymous User'; 
     const currentUserDisplayName = user?.displayName || user?.username || 'Anonymous User'; 
 
-    // YENİ: Koordinatlar ve etiket artık geocodedInputLocationData'dan alınır.
     const newLocation: Location = { lat: geocodedInputLocationData.coords[0], lng: geocodedInputLocationData.coords[1] };
     const newLocationLabel = (geocodedInputLocationData.locationLabel ?? customLocationInput.trim()) || "Unknown Location";
     const moodTimestamp = Date.now(); 
@@ -466,6 +472,8 @@ export default function Home() {
         locationLabel: newLocationLabel,
         timestamp: moodTimestamp, 
         fid: actualFid, 
+        cast: sendCast,        
+        randomloc: isRandomLocation, 
       };
 
       setMoods(prev => {
@@ -485,6 +493,8 @@ export default function Home() {
           userId: currentUserIdForLocalState,
           username: currentUsername,
           fid: actualFid, 
+          cast: sendCast,        
+          randomloc: isRandomLocation, 
       };
 
 
@@ -506,6 +516,7 @@ export default function Home() {
             user_note: moodToPost.text,
             mood_date: new Date(moodToPost.timestamp).toISOString(), 
             cast: sendCast, 
+            randomloc: isRandomLocation, 
         };
 
         console.log("Attempting to upsert to Supabase with data:", supabaseData);
@@ -531,10 +542,8 @@ export default function Home() {
                 setLastLocallyPostedMood(updatedUserMood);
             }
 
-            // Farcaster'a cast atma kontrolü
             if (sendCast && user?.fid) { 
                 try {
-                    // Cast içeriği değiştirildi
                     const castContent = moodToPost.text
                         ? `${moodToPost.text} ${moodToPost.emoji} via MoodMap`
                         : `${moodToPost.emoji} via MoodMap`;
@@ -556,7 +565,7 @@ export default function Home() {
             coords: [moodToPost.location.lat, moodToPost.location.lng],
             zoom: DEFAULT_ZOOM_LEVEL, 
             popupText: moodToPost.text || moodToPost.emoji,
-            locationType: 'input' 
+            locationType: isRandomLocation ? 'preset' : 'input' 
         });
         setMapRecenterTrigger({
             coords: [moodToPost.location.lat, moodToPost.location.lng],
@@ -580,16 +589,13 @@ export default function Home() {
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods,
     sendCast, 
+    isRandomLocation, 
     composeCast,
     customLocationInput, 
     geocodedInputLocationData, 
   ]); 
 
-  // handleCastLastMoodToFarcaster artık bu senaryoda kullanılmıyor, kaldırılabilir veya gelecekteki bir özellik için saklanabilir.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleCastLastMoodToFarcaster = useCallback(async () => {
-    // Bu fonksiyon artık doğrudan kullanılmıyor, 'handleAddMood' içinde entegre edildi.
-    // Ancak eslint hatası vermemesi için şimdilik boş bırakılabilir.
     console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
   }, []);
 
@@ -708,7 +714,7 @@ export default function Home() {
   }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]); 
 
 
-  const isPostVibeButtonDisabled = !customLocationInput.trim() || !geocodedInputLocationData || (user?.fid === undefined && anonFid === null); 
+  const isPostVibeButtonDisabled = (!isRandomLocation && !customLocationInput.trim()) || !geocodedInputLocationData || (user?.fid === undefined && anonFid === null); 
 
   const isOverallLoading = status === "loading" || !isDataLoaded || !isMapReady;
 
@@ -850,44 +856,53 @@ export default function Home() {
                         {castError && (
                             <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                         )}
-                        {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
+                        {/* Konum inputu boş değil ve henüz geocodedInputLocationData yoksa "Searching..." göster */}
+                        {!castError && customLocationInput.trim() && !geocodedInputLocationData && !isRandomLocation && (
                             <p className="text-sm text-yellow-400 text-center animate-pulse">Searching for &quot;{customLocationInput}&quot;...</p> 
                         )}
-                        {!castError && customLocationInput.trim() && geocodedInputLocationData && (
+                        {/* Konum inputu boş değil ve geocodedInputLocationData varsa "Location identified" göster */}
+                        {!castError && customLocationInput.trim() && geocodedInputLocationData && !isRandomLocation && (
                             <p className="text-sm text-green-400 text-center">
                                 Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()} 
                             </p>
+                        )}
+                        {/* isRandomLocation aktifse özel mesaj göster */}
+                         {!castError && isRandomLocation && (
+                            <p className="text-sm text-green-400 text-center">Random location selected: {customLocationInput}</p>
                         )}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                         <label htmlFor="locationInput" className="text-slate-300 text-sm font-semibold whitespace-nowrap">Location:</label>
-                        <input
-                            type="text"
-                            id="locationInput"
-                            placeholder="Enter a location..."
-                            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                            value={customLocationInput}
-                            onChange={(e) => {
-                                setCustomLocationInput(e.target.value);
-                                if (e.target.value.trim().length > 2) { 
-                                    debouncedSearchLocation(e.target.value);
-                                } else {
-                                    setGeocodedInputLocationData(null); 
-                                }
-                            }}
-                            onKeyDown={(e) => { 
-                                if (e.key === 'Enter' && customLocationInput.trim().length > 2) {
-                                    debouncedSearchLocation(customLocationInput);
-                                }
-                            }}
-                            onBlur={() => { 
-                                if (customLocationInput.trim().length > 2 &&
-                                    (!geocodedInputLocationData || (geocodedInputLocationData.locationLabel ?? '').toLowerCase() !== customLocationInput.trim().toLowerCase())) { 
-                                    debouncedSearchLocation(customLocationInput);
-                                }
-                            }}
-                        />
+                        <div className="relative flex-1"> 
+                            <input
+                                type="text"
+                                id="locationInput"
+                                placeholder="Enter a location..."
+                                className={`w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${isRandomLocation ? 'text-slate-500' : 'text-white'}`}
+                                value={customLocationInput}
+                                onChange={(e) => {
+                                    setCustomLocationInput(e.target.value);
+                                    if (e.target.value.trim().length > 2) { 
+                                        debouncedSearchLocation(e.target.value);
+                                    } else {
+                                        setGeocodedInputLocationData(null); 
+                                        setCastError(null); 
+                                    }
+                                }}
+                                disabled={isRandomLocation} 
+                            />
+                            {customLocationInput && !isRandomLocation && ( 
+                                <button
+                                    type="button"
+                                    onClick={handleClearLocationInput}
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-white focus:outline-none"
+                                    aria-label="Clear location input"
+                                >
+                                    <XCircle size={18} />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div
@@ -920,15 +935,51 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 shrink-0"> 
-                        <input
-                            type="checkbox"
-                            id="sendCastCheckbox"
-                            checked={sendCast}
-                            onChange={(e) => setSendCast(e.target.checked)}
-                            className="form-checkbox h-4 w-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
-                        />
-                        <label htmlFor="sendCastCheckbox" className="text-slate-300 select-none">Send cast</label>
+                    <div className="flex items-center justify-between space-x-4 shrink-0"> 
+                        <div className="flex items-center space-x-2"> 
+                            <input
+                                type="checkbox"
+                                id="sendCastCheckbox"
+                                checked={sendCast}
+                                onChange={(e) => setSendCast(e.target.checked)}
+                                className="form-checkbox h-4 w-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="sendCastCheckbox" className="text-slate-300 select-none">Send cast</label>
+                        </div>
+                        {/* Random konum checkbox'ı ve yenileme butonu */}
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="randomLocationCheckbox"
+                                checked={isRandomLocation}
+                                onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setIsRandomLocation(checked); 
+
+                                    if (checked) {
+                                        handleSelectRandomPresetLocation(); 
+                                        setCastError(null); 
+                                    } else {
+                                        // Randomloc devre dışı bırakıldığında inputu temizle
+                                        setCustomLocationInput('');
+                                        setGeocodedInputLocationData(null);
+                                        setCastError(null);
+                                    }
+                                }}
+                                className="form-checkbox h-4 w-4 text-purple-600 bg-slate-700 border-slate-600 rounded focus:ring-purple-500"
+                            />
+                            <label htmlFor="randomLocationCheckbox" className="text-slate-300 select-none">Random location</label>
+                            {isRandomLocation && ( 
+                                <button
+                                    type="button"
+                                    onClick={handleSelectRandomPresetLocation}
+                                    className="ml-2 p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none transition-colors"
+                                    title="Select a new random location"
+                                >
+                                    <RotateCw size={18} />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="space-y-4 shrink-0">
@@ -975,7 +1026,8 @@ export default function Home() {
               {showPresetLocations && (
                 <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 z-[51] pointer-events-auto ${PRESET_LOCATION_MENU_CLASSES}`}> 
                   <ul className="text-sm text-slate-300">
-                            {PRESET_LOCATIONS.map(preset => (
+                            {/* PRESET_LOCATIONS yerine RANDOM_LOCATIONS kullanıldı */}
+                            {RANDOM_LOCATIONS.map(preset => (
                       <li
                         key={preset.id}
                         className="px-4 py-2 hover:bg-slate-700/50 cursor-pointer flex items-center gap-2"
