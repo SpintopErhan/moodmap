@@ -36,6 +36,22 @@ const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((
   };
 };
 
+// YENİ: PRESET_LOCATIONS dizisini tekrar buraya ekliyoruz.
+const PRESET_LOCATIONS: PresetLocation[] = [
+  { id: 'world', name: 'World', coords: [0, 0], zoom: 1 }, // Daha genel bir dünya merkezi ve zoom
+  { id: 'north_america', name: 'North America', coords: [40.0, -100.0], zoom: 5 },
+  { id: 'south_america', name: 'South America', coords: [-20.0, -60.0], zoom: 5 },
+  { id: 'western_europe', name: 'Western Europe', coords: [48.0, 4.0], zoom: 5 },
+  { id: 'central_eastern_europe', name: 'Central Europe', coords: [50.0, 20.0], zoom: 5 },
+  { id: 'middle_east_north_africa', name: 'North Africa', coords: [28.0, 38.0], zoom: 5 },
+  { id: 'sub_saharan_africa', name: 'Saharan Africa', coords: [0.0, 20.0], zoom: 5 },
+  { id: 'south_asia', name: 'South Asia', coords: [22.0, 78.0], zoom: 5 },
+  { id: 'east_asia', name: 'East Asia', coords: [35.0, 125.0], zoom: 5 },
+  { id: 'southeast_asia', name: 'Southeast Asia', coords: [10.0, 105.0], zoom: 5 },
+  { id: 'oceania', name: 'Oceania', coords: [-25.0, 135.0], zoom: 5 },
+];
+
+
 interface SupabaseMood {
   uuid: string;
   username: string;
@@ -575,11 +591,6 @@ export default function Home() {
     geocodedInputLocationData, 
   ]); 
 
-  // KALDIRILDI: handleCastLastMoodToFarcaster fonksiyonu artık kullanılmıyor ve ESLint hatasına neden oluyordu.
-  // const handleCastLastMoodToFarcaster = useCallback(async () => {
-  //   console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
-  // }, []);
-
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
     setIsDragging(true);
@@ -657,8 +668,7 @@ export default function Home() {
     }
     setShowPresetLocations(prev => !prev);
     setSelectedClusterMoods(null); 
-  // DÜZELTME: setShowPresetLocations setter fonksiyonu bağımlılık dizisinden kaldırıldı.
-  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); 
+  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); // setShowPresetLocations kaldırıldı
 
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
@@ -1017,8 +1027,8 @@ export default function Home() {
               {showPresetLocations && (
                 <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 z-[51] pointer-events-auto ${PRESET_LOCATION_MENU_CLASSES}`}> 
                   <ul className="text-sm text-slate-300">
-                            {/* RANDOM_LOCATIONS dizisini direkt olarak kullanıyoruz */}
-                            {RANDOM_LOCATIONS.map(preset => (
+                            {/* DÜZELTME: PRESET_LOCATIONS dizisini kullanıyoruz */}
+                            {PRESET_LOCATIONS.map(preset => (
                       <li
                         key={preset.id}
                         className="px-4 py-2 hover:bg-slate-700/50 cursor-pointer flex items-center gap-2"
