@@ -22,7 +22,7 @@ export interface LocationData {
 
   // Yeni eklenen alan: Konumun türünü belirtir
   // 'preset' tipi eklendi.
-  locationType?: 'user' | 'fallback' | 'preset'; 
+  locationType?: 'user' | 'fallback' | 'preset' | 'input'; 
 }
 
 export interface Mood {

@@ -4,14 +4,14 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import * as L from 'leaflet';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Mood, LocationData } from '@/types/app';
+import { Mood, LocationData } from '@/types/app'; // LocationData hala pop-up'lar için kullanılabilir
 
 // Import Leaflet icon files directly
 import defaultIcon from 'leaflet/dist/images/marker-icon.png';
 import defaultIconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import defaultShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// 1. YENİ EKLENTİ: Gündüz ve Gece Harita Teması URL'leri
+// 1. Gündüz ve Gece Harita Teması URL'leri
 const DAY_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 const NIGHT_TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const ATTRIBUTION_TEXT = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
@@ -29,7 +29,7 @@ const DefaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-// YENİ BİLEŞEN: Haritanın zoom seviyesini dinleyen ve üst bileşene bildiren
+// Haritanın zoom seviyesini dinleyen ve üst bileşene bildiren
 function MapZoomUpdater({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   const map = useMap();
   useEffect(() => {
@@ -237,62 +237,8 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, cur
     });
   };
 
-const REMOTE_LOCATIONS: LocationData[] = [
-  { name: "Sahara Desert", coords: [23.4514, 15.5369], zoom: 5, popupText: "Location permission denied: Sahara Desert", locationType: 'fallback' },
-  { name: "Antarctica", coords: [-75.0000, 25.0000], zoom: 5, popupText: "Location permission denied: Antarctica", locationType: 'fallback' },
-  { name: "Greenland", coords: [71.7069, -42.6043], zoom: 5, popupText: "Location permission denied: Greenland", locationType: 'fallback' },
+// REMOTE_LOCATIONS ve getRandomRemoteLocation kaldırıldı. Artık harita başlangıç konumu bu şekilde belirlenmeyecek.
 
-  // 1. Yüksek Rakımlı / Zorlu Bölgeler
-  { name: "Mount Everest Base Camp", coords: [28.0000, 86.9000], zoom: 5, popupText: "Location permission denied: Mount Everest Base Camp", locationType: 'fallback' },
-  // Açıklama: Dünyanın çatısı, izolasyon ve meydan okuma hissi verir.
-
-  // 2. Sürreal Manzaralar
-  { name: "Salar de Uyuni, Bolivia", coords: [-20.2000, -67.4500], zoom: 5, popupText: "Location permission denied: Salar de Uyuni", locationType: 'fallback' },
-  // Açıklama: Dünyanın en büyük tuz gölü, ayna etkisiyle bilinir, gerçeküstü bir deneyim sunar.
-  { name: "Danakil Depression, Ethiopia", coords: [14.2333, 40.3000], zoom: 5, popupText: "Location permission denied: Danakil Depression", locationType: 'fallback' },
-  // Açıklama: Dünyanın en sıcak ve jeolojik olarak en aktif yerlerinden biri, renkli hidrotermal alanlar.
-
-  // 3. Uzak Adalar / Antik Medeniyet Kalıntıları
-  { name: "Easter Island, Chile", coords: [-27.1167, -109.3667], zoom: 5, popupText: "Location permission denied: Easter Island", locationType: 'fallback' },
-  // Açıklama: Pasifik Okyanusu'nun ortasında, Moai heykelleriyle ünlü, gizemli bir ada.
-
-  // 4. Farklı Bir Kutup Noktası
-  { name: "North Pole", coords: [90.0000, 10.0000], zoom: 5, popupText: "Location permission denied: North Pole", locationType: 'fallback' },
-  // Açıklama: Coğrafi Kuzey Kutbu, Antarktika'dan farklı olarak buzlarla kaplı bir okyanus, benzer ancak farklı bir izolasyon hissi.
-
-  // --- Yeni Eklenen Öneriler ---
-
-  // 5. Antik Şehirler ve Medeniyet İzleri
-  { name: "Petra, Jordan", coords: [30.3285, 35.4444], zoom: 5, popupText: "Location permission denied: Petra", locationType: 'fallback' },
-  // Açıklama: Kaya oyması mimarisiyle ünlü, antik Nebati şehri. UNESCO Dünya Mirası.
-  { name: "Machu Picchu, Peru", coords: [-13.1631, -72.5450], zoom: 5, popupText: "Location permission denied: Machu Picchu", locationType: 'fallback' },
-  // Açıklama: İnkaların bulutların üzerindeki kayıp şehri. UNESCO Dünya Mirası.
-  { name: "Angkor Wat, Cambodia", coords: [13.4125, 103.8670], zoom: 5, popupText: "Location permission denied: Angkor Wat", locationType: 'fallback' },
-  // Açıklama: Kamboçya'nın en büyük dini anıtı, etkileyici tapınak kompleksi. UNESCO Dünya Mirası.
-  { name: "Great Wall of China", coords: [40.4319, 116.5704], zoom: 5, popupText: "Location permission denied: Great Wall of China", locationType: 'fallback' },
-  // Açıklama: İnsanlık tarihinin en büyük yapılarından biri. UNESCO Dünya Mirası.
-
-  // 6. Doğal Harikalar ve Eşsiz Coğrafyalar
-  { name: "Grand Canyon, USA", coords: [36.1000, -112.1000], zoom: 5, popupText: "Location permission denied: Grand Canyon", locationType: 'fallback' },
-  // Açıklama: Colorado Nehri tarafından oyulmuş devasa kanyon, nefes kesici manzaralar. UNESCO Dünya Mirası.
-  { name: "Victoria Falls, Zambia/Zimbabwe", coords: [-17.9243, 25.8572], zoom: 5, popupText: "Location permission denied: Victoria Falls", locationType: 'fallback' },
-  // Açıklama: Dünyanın en büyük şelalelerinden biri, "Gürleyen Duman" olarak da bilinir. UNESCO Dünya Mirası.
-  { name: "Galapagos Islands, Ecuador", coords: [-0.9538, -90.9656], zoom: 5, popupText: "Location permission denied: Galapagos Islands", locationType: 'fallback' },
-  // Açıklama: Eşsiz biyoçeşitliliği ve evrim çalışmalarıyla ünlü takımadalar. UNESCO Dünya Mirası.
-
-  // 7. Gizemli ve Uzak Bölgeler
-  { name: "Timbuktu, Mali", coords: [16.7667, -3.0000], zoom: 5, popupText: "Location permission denied: Timbuktu", locationType: 'fallback' },
-  // Açıklama: Sahra Çölü'nün kenarında tarihi bir ticaret ve ilim merkezi. UNESCO Dünya Mirası.
-  { name: "Svalbard, Norway", coords: [78.0000, 16.0000], zoom: 5, popupText: "Location permission denied: Svalbard", locationType: 'fallback' },
-  // Açıklama: Kuzey Kutbu'na yakın, buzullar, kutup ayıları ve eşsiz arktik doğa.
-  { name: "Socotra Island, Yemen", coords: [12.5000, 53.9500], zoom: 5, popupText: "Location permission denied: Socotra Island", locationType: 'fallback' },
-  // Açıklama: "Hint Okyanusu'nun Galapagos'u" olarak bilinen, kendine özgü bitki örtüsü ve ejderha kanı ağaçları. UNESCO Dünya Mirası.
-];
-
-const getRandomRemoteLocation = (): LocationData => {
-  const randomIndex = Math.floor(Math.random() * REMOTE_LOCATIONS.length);
-  return REMOTE_LOCATIONS[randomIndex];
-};
 
 interface MapRecenterHandlerProps {
     recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
@@ -406,7 +352,7 @@ const MapTouchFixer: React.FC = () => {
 };
 
 
-// YENİ BİLEŞEN: Harita görünür hale geldiğinde boyutunu güncelleyen
+// Harita görünür hale geldiğinde boyutunu güncelleyen
 function MapVisibilityUpdater({ isMapVisible }: { isMapVisible?: boolean }) {
   const map = useMap(); // Leaflet harita örneğini al
 
@@ -430,7 +376,7 @@ function MapVisibilityUpdater({ isMapVisible }: { isMapVisible?: boolean }) {
 interface MapComponentProps {
   height?: string;
   moods: Mood[];
-  onInitialLocationDetermined?: (locationData: LocationData | null) => void;
+  // onInitialLocationDetermined prop'u KALDIRILDI
   recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
@@ -444,7 +390,7 @@ interface MapComponentProps {
 export default function Map({
   height = '100%',
   moods,
-  onInitialLocationDetermined,
+  // onInitialLocationDetermined prop'u buradan da KALDIRILDI
   recenterTrigger,
   onRecenterComplete,
   onMapMove,
@@ -454,13 +400,16 @@ export default function Map({
   isMapVisible,
   currentFid, // currentFid prop'u
 }: MapComponentProps) {
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [mapZoom, setMapZoom] = useState<number>(1);
-  const [hasLocationBeenSet, setHasLocationBeenSet] = useState<boolean>(false);
-  // YENİ STATE: Haritanın anlık zoom seviyesini tutar
+  // mapCenter ve mapZoom artık doğrudan default değerlerle başlatılıyor.
+  // Otomatik konum tespiti kaldırıldığı için başlangıçta global bir bakış açısı sunulacak.
+  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]); // Dünya merkezi (ekvator, başlangıç meridyeni)
+  const [mapZoom, setMapZoom] = useState<number>(1); // Global zoom seviyesi
+  // hasLocationBeenSet state'i kaldırıldı, çünkü artık otomatik konum belirleme yok
+
+  // Haritanın anlık zoom seviyesini tutar
   const [currentZoom, setCurrentZoom] = useState(1); // Başlangıç zoom seviyesiyle veya varsayılanla başlat
 
-  // 2. YENİ EKLENTİ: Dinamik tema için state
+  // Dinamik tema için state
   const [currentTileUrl, setCurrentTileUrl] = useState(NIGHT_TILE_URL); 
 
   useEffect(() => {
@@ -470,7 +419,7 @@ export default function Map({
     }
   }, []);
 
-  // 3. GÜNCELLENMİŞ EKLENTİ: Zamanı kontrol eden ve temayı BİR KEZ ayarlayan useEffect
+  // Zamanı kontrol eden ve temayı BİR KEZ ayarlayan useEffect
   useEffect(() => {
     const updateTheme = () => {
         const hour = new Date().getHours();
@@ -478,66 +427,16 @@ export default function Map({
         const isDayTime = hour >= 6 && hour < 18;
         const newThemeUrl = isDayTime ? DAY_TILE_URL : NIGHT_TILE_URL;
 
-        setCurrentTileUrl(newThemeUrl); // Tema değişmese bile günceller, çünkü sadece bir kez çalışacak
+        setCurrentTileUrl(newThemeUrl); 
         console.log(`[Map] Tema ayarlandı: Yerel saat ${hour}:00, Tema: ${isDayTime ? 'GÜNDÜZ' : 'GECE'}`);
     };
 
-    // Bileşen yüklendiğinde temayı ayarla (sadece bir kez çalışır)
     updateTheme();
 
   }, []); // Boş dependency array, sadece mount'ta çalışır ve bir kez ayarlar
 
-  const setInitialLocation = useCallback((location: LocationData) => {
-    if (!hasLocationBeenSet) {
-      setMapCenter(location.coords);
-      setMapZoom(location.zoom ?? 7); //zoom 14'ten 7'ye değiştirildi
-      setHasLocationBeenSet(true);
-      console.log(`[Map] Location set: ${location.name} (Zoom: ${location.zoom ?? 5}), Type: ${location.locationType}`);
-      onInitialLocationDetermined?.(location);
-    }
-  }, [hasLocationBeenSet, onInitialLocationDetermined]);
-
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-   if (navigator.geolocation) {
-      timeoutId = setTimeout(() => {
-        if (!hasLocationBeenSet) {
-          console.warn("[Map] Location permission timed out (5s). Setting to random location...");
-          setInitialLocation(getRandomRemoteLocation());
-        }
-      }, 5000);
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          clearTimeout(timeoutId);
-          setInitialLocation({
-            name: "Your Current Location",
-            coords: [position.coords.latitude, position.coords.longitude],
-            zoom: 7, //zoom 14'ten 7'ye değiştirildi
-            popupText: "Your Current Location",
-            locationType: 'user'
-          });
-          console.log("[Map] Location permission granted:", position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          clearTimeout(timeoutId);
-          console.error("[Map] Location permission denied or error occurred:", error);
-          if (!hasLocationBeenSet) {
-            console.log("[Map] Location permission denied, setting to random location...");
-            setInitialLocation(getRandomRemoteLocation());
-          }
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      console.warn("[Map] Browser does not support location services. Setting to random location...");
-      setInitialLocation(getRandomRemoteLocation());
-    }
-
-    return () => clearTimeout(timeoutId);
-  }, [hasLocationBeenSet, setInitialLocation]);
+  // setInitialLocation useCallback'i ve geolocation useEffect'i kaldırıldı.
+  // Artık harita başlangıç konumu manuel olarak verilecek veya recenterTrigger ile ayarlanacak.
 
 
   // Clustering Logic with stable keys
@@ -570,17 +469,18 @@ export default function Map({
   }, [moods]);
 
 
-  if (!mapCenter) {
-    return null; 
-  }
+  // mapCenter her zaman başlatıldığı için bu kontrol artık gerekli değil.
+  // if (!mapCenter) {
+  //   return null; 
+  // }
 
   const bounds = L.latLngBounds([-90, -180], [90, 180]);
 
   return (
     <div style={{ height, width: '100%' }}>
       <MapContainer
-        center={mapCenter}
-        zoom={mapZoom} // Başlangıç zoom seviyesi
+        center={mapCenter} // Varsayılan [0,0] veya recenterTrigger ile güncellenir
+        zoom={mapZoom} // Varsayılan 1 veya recenterTrigger ile güncellenir
         minZoom={1}
         scrollWheelZoom={false} 
         doubleClickZoom={false} 
@@ -599,12 +499,12 @@ export default function Map({
         }}
       >
         <TileLayer
-          attribution={ATTRIBUTION_TEXT} // Attributon metnini sabit bir değişkenden al
-          url={currentTileUrl} // <<< YENİ: Dinamik olarak belirlenen URL'yi kullan
+          attribution={ATTRIBUTION_TEXT} 
+          url={currentTileUrl} 
           noWrap={true}
         />
         
-        {/* YENİ EKLENTİ: Zoom seviyesini güncelleyen bileşen */}
+        {/* Zoom seviyesini güncelleyen bileşen */}
         <MapZoomUpdater onZoomChange={setCurrentZoom} />
 
         {clusteredMoods.map((clusterData) => { 
@@ -626,7 +526,7 @@ export default function Map({
                         ? createClusterIcon(group.map(m => m.emoji), isCurrentUsersMoodInCluster, currentZoom) 
                         : createEmojiIcon(mainMood.emoji, isCurrentUsersMoodForSingle, currentZoom) 
                     }
-                    zIndexOffset={zIndexOffset} // <<< YENİ: zIndexOffset buraya eklendi
+                    zIndexOffset={zIndexOffset} 
                     eventHandlers={isCluster ? {
                         click: () => onClusterClick?.(group) 
                     } : undefined}

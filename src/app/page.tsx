@@ -22,6 +22,14 @@ const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
 
+// YENİ EKLENEN: Debounce yardımcı fonksiyonu
+const debounce = (func: (...args: any[]) => void, delay: number) => {
+  let timeout: NodeJS.Timeout;
+  return (...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+};
 
 interface PresetLocation {
   id: string;
@@ -68,7 +76,7 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
     timestamp: new Date(dbMood.mood_date).getTime(), 
     userId: dbMood.fid.toString(), 
     username: dbMood.username,
-    fid: dbMood.fid, // BURAYI EKLEYİN: Supabase'den gelen fid'i Mood objesine atıyoruz.
+    fid: dbMood.fid, 
   };
 };
 
@@ -77,7 +85,8 @@ const DEFAULT_ZOOM_LEVEL = 5;
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp(); 
 
-  const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
+  // --- KALDIRILDI: currentDeterminedLocationData state'i kaldırıldı ---
+  // const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
   const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ 
     coords: [number, number], 
@@ -115,8 +124,13 @@ export default function Home() {
   const [anonFid, setAnonFid] = useState<number | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false); 
   const [isMapReady, setIsMapReady] = useState(false); 
-  // YENİ STATE: Map bileşenine göndermek üzere kullanıcının belirlenmiş FID'si
+  // Map bileşenine göndermek üzere kullanıcının belirlenmiş FID'si
   const [userEffectiveFid, setUserEffectiveFid] = useState<number | null>(null); 
+
+  // Konum girişi için state
+  const [customLocationInput, setCustomLocationInput] = useState<string>('');
+  // Geocoding ile elde edilen veriyi saklar.
+  const [geocodedInputLocationData, setGeocodedInputLocationData] = useState<LocationData | null>(null);
 
 
   // Geolocation ve Anonim FID yükleme
@@ -125,7 +139,7 @@ export default function Home() {
       import('@/lib/geolocation').then(mod => {
         setGeolocationFunctions({
           reverseGeocode: mod.reverseGeocode,
-          forwardGeocode: mod.forwardGeocode,
+          forwardGeocode: mod.forwardGeocode, 
         });
         console.log("[page.tsx] Geolocation module loaded dynamically.");
       }).catch(err => {
@@ -193,7 +207,7 @@ export default function Home() {
         effectiveFid = 0; 
       }
       
-      // YENİ: Belirlenen effectiveFid'i state'e kaydet
+      // Belirlenen effectiveFid'i state'e kaydet
       setUserEffectiveFid(effectiveFid);
 
       if (effectiveFid === null) {
@@ -251,7 +265,7 @@ export default function Home() {
     status, 
     anonFid, 
     user?.fid, 
-    fetchAllMoods, // useCallback olduğu için stabil
+    fetchAllMoods, 
     setCastError, 
     setLastLocallyPostedMood, 
     setUserLastMoodLocation, 
@@ -260,7 +274,7 @@ export default function Home() {
     setIsDataLoaded, 
     setMoods,
     setSendCast, 
-    setUserEffectiveFid, // Yeni state setter bağımlılığı eklendi (güvenli olması açısından)
+    setUserEffectiveFid, 
   ]);
 
 
@@ -279,11 +293,16 @@ export default function Home() {
     setStatusText(''); 
     setIsSubmitting(false); 
     setCastError(null); 
-    setSendCast(true); // Paneller kapanırken varsayılan olarak true yap
+    setSendCast(true); 
+    // customLocationInput ve geocodedInputLocationData'yı sıfırla
+    setCustomLocationInput('');
+    setGeocodedInputLocationData(null);
     console.log("[page.tsx] All panels closed and states reset to map view.");
-  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast]);
+  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData]);
 
 
+   // --- KALDIRILDI: handleInitialLocationDetermined callback'i tamamen kaldırıldı ---
+   /*
    const handleInitialLocationDetermined = useCallback(async (locationData: LocationData | null) => {
       if (!geolocationFunctions) {
         console.warn("[page.tsx] Geolocation functions not yet loaded, skipping initial location determination.");
@@ -339,11 +358,61 @@ export default function Home() {
       setCurrentDeterminedLocationData, 
       setIsMapCenteredOnUserLocation, 
     ]);
+    */
+
+  // Konum inputu için geocoding fonksiyonu
+  const searchLocationFromInput = useCallback(async (locationText: string) => {
+    if (!geolocationFunctions || !locationText.trim()) {
+      setGeocodedInputLocationData(null);
+      setCastError(null); // Başarısız veya boş inputta hata mesajını temizle
+      return;
+    }
+
+    console.log(`[page.tsx] Searching for location: "${locationText}"`);
+    setCastError(null); // Önceki hataları temizle
+
+    try {
+      const coords = await geolocationFunctions.forwardGeocode(locationText.trim());
+
+      if (coords) {
+        console.log(`[page.tsx] Forward geocoded "${locationText}" to:`, coords);
+        // Şimdi standart bir etiket almak için ters geocoding yap
+        const reversedLabel = await geolocationFunctions.reverseGeocode(coords[0], coords[1]);
+
+        setGeocodedInputLocationData({
+          coords: coords,
+          timestamp: Date.now(),
+          locationLabel: reversedLabel || locationText.trim(), // Mevcutsa ters etiket, yoksa orijinal girdi
+          zoom: DEFAULT_ZOOM_LEVEL,
+          locationType: 'input', // Bu verinin kullanıcı inputundan geldiğini belirt
+        });
+        console.log(`[page.tsx] Geocoded input location set: ${reversedLabel || locationText.trim()}`);
+      } else {
+        console.warn(`[page.tsx] No coordinates found for "${locationText}".`);
+        setGeocodedInputLocationData(null);
+        setCastError("Location not found. Please try a different name.");
+      }
+    } catch (err) {
+      console.error(`[page.tsx] Error during geocoding input "${locationText}":`, err);
+      setGeocodedInputLocationData(null);
+      setCastError("Error searching for location. Please try again.");
+    }
+  }, [geolocationFunctions, setCastError]);
+
+  // searchLocationFromInput için debounced versiyon
+  const debouncedSearchLocation = useMemo(() => debounce(searchLocationFromInput, 800), [searchLocationFromInput]);
 
 
   const handleAddMood = useCallback(async () => {
-    if (!currentDeterminedLocationData) {
-        setCastError("Location information is not available to share your mood. Please determine the location."); 
+    // YENİ KONTROL: Eğer customLocationInput boşsa hata verelim
+    if (!customLocationInput.trim()) {
+        setCastError("Please enter a location to share your mood.");
+        return;
+    }
+
+    // YENİ KONTROL: Eğer geocodedInputLocationData yoksa (konum bulunamadıysa) hata verelim
+    if (!geocodedInputLocationData) {
+        setCastError("Please enter a valid location and wait for it to be identified.");
         return;
     }
 
@@ -377,8 +446,9 @@ export default function Home() {
     const currentUsername = user?.username || 'Anonymous User'; 
     const currentUserDisplayName = user?.displayName || user?.username || 'Anonymous User'; 
 
-    const newLocation: Location = { lat: currentDeterminedLocationData.coords[0], lng: currentDeterminedLocationData.coords[1] };
-    const newLocationLabel = currentDeterminedLocationData.locationLabel || "Unknown Location";
+    // YENİ: Koordinatlar ve etiket artık geocodedInputLocationData'dan alınır.
+    const newLocation: Location = { lat: geocodedInputLocationData.coords[0], lng: geocodedInputLocationData.coords[1] };
+    const newLocationLabel = (geocodedInputLocationData.locationLabel ?? customLocationInput.trim()) || "Unknown Location";
     const moodTimestamp = Date.now(); 
 
     let moodToPost: Mood;
@@ -394,7 +464,7 @@ export default function Home() {
         location: newLocation,
         locationLabel: newLocationLabel,
         timestamp: moodTimestamp, 
-        fid: actualFid, // BURAYI EKLEYİN: Mevcut mood güncellenirken fid'i atıyoruz.
+        fid: actualFid, 
       };
 
       setMoods(prev => {
@@ -413,7 +483,7 @@ export default function Home() {
           timestamp: moodTimestamp,
           userId: currentUserIdForLocalState,
           username: currentUsername,
-          fid: actualFid, // BURAYI EKLEYİN: Yeni mood oluşturulurken fid'i atıyoruz.
+          fid: actualFid, 
       };
 
 
@@ -434,7 +504,7 @@ export default function Home() {
             emoji: moodToPost.emoji,
             user_note: moodToPost.text,
             mood_date: new Date(moodToPost.timestamp).toISOString(), 
-            cast: sendCast, // `cast` sütunu eklendi
+            cast: sendCast, 
         };
 
         console.log("Attempting to upsert to Supabase with data:", supabaseData);
@@ -461,7 +531,7 @@ export default function Home() {
             }
 
             // Farcaster'a cast atma kontrolü
-            if (sendCast && user?.fid) { // Sadece onay kutusu işaretliyse VE Farcaster kullanıcısıysa cast at
+            if (sendCast && user?.fid) { 
                 try {
                     // Cast içeriği değiştirildi
                     const castContent = moodToPost.text
@@ -481,15 +551,15 @@ export default function Home() {
         setCastError(`An unexpected database error occurred: ${unexpectedError instanceof Error ? unexpectedError.message : "Unknown error"}.`);
     } finally {
         setUserLastMoodLocation({
-            name: moodToPost.locationLabel || "Unknown Location",
+            name: newLocationLabel, 
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: DEFAULT_ZOOM_LEVEL, //currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL karışıklık yarattığı için sadece DEFAULT_ZOOM_LEVEL kullanıldı
+            zoom: DEFAULT_ZOOM_LEVEL, 
             popupText: moodToPost.text || moodToPost.emoji,
-            locationType: currentDeterminedLocationData?.locationType || 'fallback'
+            locationType: 'input' 
         });
         setMapRecenterTrigger({
             coords: [moodToPost.location.lat, moodToPost.location.lng],
-            zoom: DEFAULT_ZOOM_LEVEL, //currentDeterminedLocationData?.zoom || DEFAULT_ZOOM_LEVEL karışıklık yarattığı için sadece DEFAULT_ZOOM_LEVEL kullanıldı
+            zoom: DEFAULT_ZOOM_LEVEL, 
             animate: false,
             purpose: 'userLocation', 
         });
@@ -501,7 +571,6 @@ export default function Home() {
         handleCloseAllPanels(); 
     }
   }, [
-    currentDeterminedLocationData, 
     user?.fid, 
     anonFid, 
     user?.username,
@@ -510,7 +579,9 @@ export default function Home() {
     setUserLastMoodLocation, setMapRecenterTrigger, setLastLocallyPostedMood, 
     setIsMapCenteredOnUserLocation, handleCloseAllPanels, fetchAllMoods,
     sendCast, 
-    composeCast 
+    composeCast,
+    customLocationInput, 
+    geocodedInputLocationData, 
   ]); 
 
   // handleCastLastMoodToFarcaster artık bu senaryoda kullanılmıyor, kaldırılabilir veya gelecekteki bir özellik için saklanabilir.
@@ -560,7 +631,10 @@ export default function Home() {
   }, [setIsMapCenteredOnUserLocation]);
 
   const triggerRecenter = useCallback(() => {
-    const targetLocationData = userLastMoodLocation || currentDeterminedLocationData;
+    // TRIGGER RECENTER İÇİN YA geocodedInputLocationData'yı YA DA userLastMoodLocation'ı kullanırız.
+    // currentDeterminedLocationData artık bu işlev için ana kaynak değildir.
+    const targetLocationData = geocodedInputLocationData || userLastMoodLocation;
+
     if (targetLocationData) {
         setMapRecenterTrigger({
             coords: targetLocationData.coords,
@@ -570,11 +644,11 @@ export default function Home() {
         });
         setIsMapCenteredOnUserLocation(false); 
     } else {
-        alert("Location information is not yet determined.");
+        alert("Location information is not yet determined. Please enter a location.");
     }
   }, [
     userLastMoodLocation, 
-    currentDeterminedLocationData, 
+    geocodedInputLocationData, 
     setMapRecenterTrigger, 
     setIsMapCenteredOnUserLocation, 
   ]);
@@ -585,10 +659,12 @@ export default function Home() {
   }, [triggerRecenter, handleCloseAllPanels]); 
 
   const isRecenterButtonDisabled = useMemo(() => {
-    const noLocationData = !userLastMoodLocation && !currentDeterminedLocationData;
+    // Recenter butonu, eğer ne userLastMoodLocation ne de geocodedInputLocationData mevcut değilse veya zaten ortalanmışsa devre dışı kalır.
+    const noLocationData = !userLastMoodLocation && !geocodedInputLocationData;
     const isCurrentlyCentered = isMapCenteredOnUserLocation; 
     return noLocationData || isCurrentlyCentered; 
-  }, [userLastMoodLocation, currentDeterminedLocationData, isMapCenteredOnUserLocation]);
+  }, [userLastMoodLocation, geocodedInputLocationData, isMapCenteredOnUserLocation]); 
+
 
   const handleMapButtonClick = useCallback(() => {
     if (view !== ViewState.MAP) { 
@@ -634,7 +710,8 @@ export default function Home() {
   }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]);
 
 
-  const isPostVibeButtonDisabled = !currentDeterminedLocationData || (user?.fid === undefined && anonFid === null); 
+  // isPostVibeButtonDisabled güncellendi: Artık customLocationInput ve geocodedInputLocationData'yı kontrol ediyor.
+  const isPostVibeButtonDisabled = !customLocationInput.trim() || !geocodedInputLocationData || (user?.fid === undefined && anonFid === null); 
 
   const isOverallLoading = status === "loading" || !isDataLoaded || !isMapReady;
 
@@ -712,7 +789,8 @@ export default function Home() {
         <div className="absolute inset-0">
             <DynamicMap
                 moods={moods}
-                onInitialLocationDetermined={handleInitialLocationDetermined}
+                // --- KALDIRILDI: onInitialLocationDetermined prop'u kaldırıldı ---
+                // onInitialLocationDetermined={handleInitialLocationDetermined}
                 height="100%"
                 recenterTrigger={mapRecenterTrigger}
                 onRecenterComplete={handleMapRecenterComplete}
@@ -729,7 +807,7 @@ export default function Home() {
                     }
                 }} 
                 isMapVisible={!isOverallLoading}
-                currentFid={userEffectiveFid} // <<< YENİ: Belirlenen FID'yi Map bileşenine iletiyoruz
+                currentFid={userEffectiveFid} 
             />
         </div>
 
@@ -754,12 +832,10 @@ export default function Home() {
          {/* Küme Listesi Yan Paneli */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
-                // Orjinal boyutlandırmalar ve bg-transparent geri getirildi
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
-                onClick={handleCloseAllPanels} // Bu paneli tıklayarak kapatmak için
+                onClick={handleCloseAllPanels} 
             >
                 <h3 className={`text-base font-bold text-blue-400 text-center truncate shrink-0 md:text-sm py-2`}> 
-                    {/* YENİ DEĞİŞİKLİK: Metin vurgusu için span eklendi */}
                     <span className={`inline-block 
                                 bg-slate-900/80 backdrop-blur-sm 
                                 px-3 py-1 rounded-md shadow-sm border border-slate-700`}>
@@ -784,29 +860,55 @@ export default function Home() {
                  onClick={handleCloseAllPanels} 
              >
                  <div 
-                    // YENİ UI DEĞİŞİKLİĞİ: Paneli yukarı kaydırır ve içerik akışını yukarıdan başlatır
                     className="w-full max-w-md flex flex-col h-full max-h-[600px] space-y-4 transform-gpu -translate-y-12"
                     onClick={(e) => e.stopPropagation()} 
                  >
                     <h2 className="text-xl font-bold text-center shrink-0">What&apos;s your Mood?</h2>
 
+                    {/* Konum arama durumu ve hata mesajları */}
                     <div className="min-h-[24px] flex items-center justify-center">
-                        {!currentDeterminedLocationData && (
-                            <p className="text-sm text-yellow-400 text-center animate-pulse">Location is not yet determined. Please wait...</p>
-                        )}
-                        {currentDeterminedLocationData && currentDeterminedLocationData.locationType === 'user' && (
-                            <p className="text-sm text-green-400 text-center">
-                                Location found: {currentDeterminedLocationData.locationLabel}
-                            </p>
-                        )}
-                        {currentDeterminedLocationData && currentDeterminedLocationData.locationType === 'fallback' && (
-                            <p className="text-sm text-red-400 text-center font-bold animate-pulse">
-                                Unauthorized access detected, Location: {currentDeterminedLocationData.locationLabel}
-                            </p>
-                        )}
                         {castError && (
                             <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                         )}
+                        {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
+                            <p className="text-sm text-yellow-400 text-center animate-pulse">Searching for "{customLocationInput}"...</p>
+                        )}
+                        {!castError && customLocationInput.trim() && geocodedInputLocationData && (
+                            <p className="text-sm text-green-400 text-center">
+                                Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()} 
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Location Input */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <label htmlFor="locationInput" className="text-slate-300 text-sm font-semibold whitespace-nowrap">Location:</label>
+                        <input
+                            type="text"
+                            id="locationInput"
+                            placeholder="Enter a location..."
+                            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                            value={customLocationInput}
+                            onChange={(e) => {
+                                setCustomLocationInput(e.target.value);
+                                if (e.target.value.trim().length > 2) { 
+                                    debouncedSearchLocation(e.target.value);
+                                } else {
+                                    setGeocodedInputLocationData(null); 
+                                }
+                            }}
+                            onKeyDown={(e) => { 
+                                if (e.key === 'Enter' && customLocationInput.trim().length > 2) {
+                                    debouncedSearchLocation(customLocationInput);
+                                }
+                            }}
+                            onBlur={() => { 
+                                if (customLocationInput.trim().length > 2 &&
+                                    (!geocodedInputLocationData || (geocodedInputLocationData.locationLabel ?? '').toLowerCase() !== customLocationInput.trim().toLowerCase())) { 
+                                    debouncedSearchLocation(customLocationInput);
+                                }
+                            }}
+                        />
                     </div>
 
                     <div
@@ -840,7 +942,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* YENİ EKLENEN: Send cast onay kutusu */}
+                    {/* Send cast onay kutusu */}
                     <div className="flex items-center space-x-2 shrink-0"> 
                         <input
                             type="checkbox"
@@ -851,7 +953,6 @@ export default function Home() {
                         />
                         <label htmlFor="sendCastCheckbox" className="text-slate-300 select-none">Send cast</label>
                     </div>
-                    {/* YENİ EKLENEN BÖLÜM SONU */}
 
                     <div className="space-y-4 shrink-0">
                         <div className="relative">
@@ -859,9 +960,9 @@ export default function Home() {
                                 type="text"
                                 maxLength={MAX_MOOD_TEXT_LENGTH}
                                 placeholder="Add a note... (optional)"
-                                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 pr-14 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" // Renk düzeltildi
+                                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 pr-14 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all" 
                                 value={statusText}
-                                onChange={(e) => setStatusText(e.target.value)} // Buradaki hata düzeltildi
+                                onChange={(e) => setStatusText(e.target.value)} 
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
                                 {statusText.length}/{MAX_MOOD_TEXT_LENGTH}
