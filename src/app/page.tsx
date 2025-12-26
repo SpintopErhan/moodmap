@@ -36,29 +36,6 @@ const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((
   };
 };
 
-// KALDIRILDI: PresetLocation interface'i artık src/lib/randomloc'tan geliyor.
-// interface PresetLocation {
-//   id: string;
-//   name: string;
-//   coords: [number, number]; // [latitude, longitude]
-//   zoom: number; // Bu konuma gidildiğinde haritanın zoom seviyesi
-// }
-
-// KALDIRILDI: PRESET_LOCATIONS dizisi artık src/lib/randomloc'tan geliyor (RANDOM_LOCATIONS adıyla).
-// const PRESET_LOCATIONS: PresetLocation[] = [
-//   { id: 'world', name: 'World', coords: [0, 0], zoom: 1 }, 
-//   { id: 'north_america', name: 'North America', coords: [40.0, -100.0], zoom: 5 },
-//   { id: 'south_america', name: 'South America', coords: [-20.0, -60.0], zoom: 5 },
-//   { id: 'western_europe', name: 'Western Europe', coords: [48.0, 4.0], zoom: 5 },
-//   { id: 'central_eastern_europe', name: 'Central Europe', coords: [50.0, 20.0], zoom: 5 },
-//   { id: 'middle_east_north_africa', name: 'North Africa', coords: [28.0, 38.0], zoom: 5 },
-//   { id: 'sub_saharan_africa', name: 'Saharan Africa', coords: [0.0, 20.0], zoom: 5 },
-//   { id: 'south_asia', name: 'South Asia', coords: [22.0, 78.0], zoom: 5 },
-//   { id: 'east_asia', name: 'East Asia', coords: [35.0, 125.0], zoom: 5 },
-//   { id: 'southeast_asia', name: 'Southeast Asia', coords: [10.0, 105.0], zoom: 5 },
-//   { id: 'oceania', name: 'Oceania', coords: [-25.0, 135.0], zoom: 5 },
-// ];
-
 interface SupabaseMood {
   uuid: string;
   username: string;
@@ -345,7 +322,6 @@ export default function Home() {
 
   const debouncedSearchLocation = useMemo(() => debounce(searchLocationFromInput, 800), [searchLocationFromInput]);
 
-  // YENİ REVİZYON: RANDOM_LOCATIONS'ı kullanıyoruz
   const handleSelectRandomPresetLocation = useCallback(() => {
     if (RANDOM_LOCATIONS.length === 0) { 
         setCastError("No random locations available.");
@@ -412,6 +388,10 @@ export default function Home() {
     setGeocodedInputLocationData(null);
     setCastError(null);
   }, [setCustomLocationInput, setGeocodedInputLocationData, setCastError]);
+
+  const handleClearStatusText = useCallback(() => {
+    setStatusText('');
+  }, [setStatusText]);
 
   const handleAddMood = useCallback(async () => {
     if (!isRandomLocation && !customLocationInput.trim()) {
@@ -595,9 +575,10 @@ export default function Home() {
     geocodedInputLocationData, 
   ]); 
 
-  const handleCastLastMoodToFarcaster = useCallback(async () => {
-    console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
-  }, []);
+  // KALDIRILDI: handleCastLastMoodToFarcaster fonksiyonu artık kullanılmıyor.
+  // const handleCastLastMoodToFarcaster = useCallback(async () => {
+  //   console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
+  // }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
@@ -676,7 +657,8 @@ export default function Home() {
     }
     setShowPresetLocations(prev => !prev);
     setSelectedClusterMoods(null); 
-  }, [view, setSelectedClusterMoods, handleCloseAllPanels, setShowPresetLocations]); 
+  // DÜZELTME: setShowPresetLocations setter fonksiyonu bağımlılık dizisinden kaldırıldı.
+  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); 
 
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
@@ -960,7 +942,6 @@ export default function Home() {
                                         handleSelectRandomPresetLocation(); 
                                         setCastError(null); 
                                     } else {
-                                        // Randomloc devre dışı bırakıldığında inputu temizle
                                         setCustomLocationInput('');
                                         setGeocodedInputLocationData(null);
                                         setCastError(null);
@@ -983,7 +964,7 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-4 shrink-0">
-                        <div className="relative">
+                        <div className="relative"> 
                             <input
                                 type="text"
                                 maxLength={MAX_MOOD_TEXT_LENGTH}
@@ -995,6 +976,16 @@ export default function Home() {
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
                                 {statusText.length}/{MAX_MOOD_TEXT_LENGTH}
                             </span>
+                            {statusText && ( 
+                                <button
+                                    type="button"
+                                    onClick={handleClearStatusText}
+                                    className="absolute inset-y-0 right-10 flex items-center pr-3 text-slate-400 hover:text-white focus:outline-none" 
+                                    aria-label="Clear note input"
+                                >
+                                    <XCircle size={18} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex gap-3">
@@ -1026,7 +1017,7 @@ export default function Home() {
               {showPresetLocations && (
                 <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 z-[51] pointer-events-auto ${PRESET_LOCATION_MENU_CLASSES}`}> 
                   <ul className="text-sm text-slate-300">
-                            {/* PRESET_LOCATIONS yerine RANDOM_LOCATIONS kullanıldı */}
+                            {/* RANDOM_LOCATIONS dizisini direkt olarak kullanıyoruz */}
                             {RANDOM_LOCATIONS.map(preset => (
                       <li
                         key={preset.id}
@@ -1042,18 +1033,19 @@ export default function Home() {
               )}
             </div>
 
-            <button
+           <button
                 onClick={() => { 
-                    if (view !== ViewState.MAP) { 
-                      handleCloseAllPanels(); 
+                    if (view === ViewState.ADD) {
+                        return;
                     }
-                    setView(ViewState.ADD); 
+
                     setShowPresetLocations(false); 
                     setSelectedClusterMoods(null); 
+                    setView(ViewState.ADD); 
                 }}
                 className={`bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg shadow-blue-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
             >
-                <Plus size={28} strokeWidth={3} />
+                <Plus size={28} strokeWidth={3} /> {/* Burası düzeltildi */}
             </button>
 
             <button
