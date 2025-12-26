@@ -35,6 +35,7 @@ export interface Mood {
   timestamp: number;
   userId: string;
   username: string;
+  fid?: number;
 }
 
 export enum ViewState {
