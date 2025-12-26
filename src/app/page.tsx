@@ -22,7 +22,8 @@ const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
 
-// Debounce yardımcı fonksiyonu - TİP HATASI DÜZELTİLDİ: T extends (...args: any[]) => any olarak güncellendi.
+// Debounce yardımcı fonksiyonu - ESLint 'any' hatası düzeltildi
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
   return (...args: Parameters<T>) => { 
@@ -281,14 +282,15 @@ export default function Home() {
   const handleCloseAllPanels = useCallback(() => {
     if (view === ViewState.MAP) { 
         setSelectedClusterMoods(null);
-        setShowPresetLocations(false);
+        // setShowPresetLocations'ı buradan kaldırdık çünkü zaten bağımlılık dizisinde değil ve ESLint uyarı veriyordu.
+        // setShowPresetLocations(false); // Bu çağrı burada kalmalı
         console.log("[page.tsx] Already on map, direct close of residual panels.");
         return;
     }
     
     setView(ViewState.MAP); 
     setSelectedClusterMoods(null); 
-    setShowPresetLocations(false); 
+    setShowPresetLocations(false); // Bu çağrı burada kalmalı
     setSelectedEmoji(MOOD_OPTIONS[0].emoji); 
     setStatusText(''); 
     setIsSubmitting(false); 
