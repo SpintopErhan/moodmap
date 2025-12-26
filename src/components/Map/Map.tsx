@@ -4,7 +4,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import * as L from 'leaflet';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { Mood, LocationData } from '@/types/app'; // LocationData hala pop-up'lar için kullanılabilir
+import { Mood } from '@/types/app'; // LocationData import'ı kaldırıldı
 
 // Import Leaflet icon files directly
 import defaultIcon from 'leaflet/dist/images/marker-icon.png';
@@ -237,9 +237,6 @@ const createClusterIcon = (emojis: string[], isCurrentUsersCluster: boolean, cur
     });
   };
 
-// REMOTE_LOCATIONS ve getRandomRemoteLocation kaldırıldı. Artık harita başlangıç konumu bu şekilde belirlenmeyecek.
-
-
 interface MapRecenterHandlerProps {
     recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
     onRecenterComplete?: () => void;
@@ -376,7 +373,6 @@ function MapVisibilityUpdater({ isMapVisible }: { isMapVisible?: boolean }) {
 interface MapComponentProps {
   height?: string;
   moods: Mood[];
-  // onInitialLocationDetermined prop'u KALDIRILDI
   recenterTrigger?: { coords: [number, number], zoom: number, animate: boolean, purpose: 'userLocation' | 'presetLocation' } | null;
   onRecenterComplete?: () => void;
   onMapMove?: () => void;
@@ -390,7 +386,6 @@ interface MapComponentProps {
 export default function Map({
   height = '100%',
   moods,
-  // onInitialLocationDetermined prop'u buradan da KALDIRILDI
   recenterTrigger,
   onRecenterComplete,
   onMapMove,
@@ -401,11 +396,10 @@ export default function Map({
   currentFid, // currentFid prop'u
 }: MapComponentProps) {
   // mapCenter ve mapZoom artık doğrudan default değerlerle başlatılıyor.
-  // Otomatik konum tespiti kaldırıldığı için başlangıçta global bir bakış açısı sunulacak.
-  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]); // Dünya merkezi (ekvator, başlangıç meridyeni)
-  const [mapZoom, setMapZoom] = useState<number>(1); // Global zoom seviyesi
-  // hasLocationBeenSet state'i kaldırıldı, çünkü artık otomatik konum belirleme yok
-
+  // Bu state'ler kullanılmadığı için kaldırıldı.
+  // const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]); 
+  // const [mapZoom, setMapZoom] = useState<number>(1); 
+  
   // Haritanın anlık zoom seviyesini tutar
   const [currentZoom, setCurrentZoom] = useState(1); // Başlangıç zoom seviyesiyle veya varsayılanla başlat
 
@@ -434,10 +428,6 @@ export default function Map({
     updateTheme();
 
   }, []); // Boş dependency array, sadece mount'ta çalışır ve bir kez ayarlar
-
-  // setInitialLocation useCallback'i ve geolocation useEffect'i kaldırıldı.
-  // Artık harita başlangıç konumu manuel olarak verilecek veya recenterTrigger ile ayarlanacak.
-
 
   // Clustering Logic with stable keys
   const clusteredMoods = useMemo(() => {
@@ -469,18 +459,13 @@ export default function Map({
   }, [moods]);
 
 
-  // mapCenter her zaman başlatıldığı için bu kontrol artık gerekli değil.
-  // if (!mapCenter) {
-  //   return null; 
-  // }
-
   const bounds = L.latLngBounds([-90, -180], [90, 180]);
 
   return (
     <div style={{ height, width: '100%' }}>
       <MapContainer
-        center={mapCenter} // Varsayılan [0,0] veya recenterTrigger ile güncellenir
-        zoom={mapZoom} // Varsayılan 1 veya recenterTrigger ile güncellenir
+        center={[0, 0]} // Varsayılan dünya merkezi
+        zoom={1} // Varsayılan global zoom seviyesi
         minZoom={1}
         scrollWheelZoom={false} 
         doubleClickZoom={false} 
@@ -495,7 +480,7 @@ export default function Map({
             onMapReady?.();
             console.log("[Map.tsx] MapContainer created, onMapReady fired.");
             // Harita hazır olduğunda da ilk zoom seviyesini kaydet
-            setCurrentZoom(mapZoom); 
+            setCurrentZoom(1); // Varsayılan başlangıç zoom seviyesi
         }}
       >
         <TileLayer

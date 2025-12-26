@@ -22,10 +22,10 @@ const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
 
-// YENİ EKLENEN: Debounce yardımcı fonksiyonu
-const debounce = (func: (...args: any[]) => void, delay: number) => {
+// Debounce yardımcı fonksiyonu - 'any' tipleri düzeltildi
+const debounce = <T extends (...args: any[]) => void>(func: T, delay: number) => {
   let timeout: NodeJS.Timeout;
-  return (...args: any[]) => {
+  return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), delay);
   };
@@ -85,7 +85,7 @@ const DEFAULT_ZOOM_LEVEL = 5;
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp(); 
 
-  // --- KALDIRILDI: currentDeterminedLocationData state'i kaldırıldı ---
+  // --- currentDeterminedLocationData state'i kaldırıldı ---
   // const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
   const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ 
@@ -298,7 +298,7 @@ export default function Home() {
     setCustomLocationInput('');
     setGeocodedInputLocationData(null);
     console.log("[page.tsx] All panels closed and states reset to map view.");
-  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData]);
+  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData /* Removed setShowPresetLocations */]);
 
 
    // --- KALDIRILDI: handleInitialLocationDetermined callback'i tamamen kaldırıldı ---
@@ -867,18 +867,22 @@ export default function Home() {
 
                     {/* Konum arama durumu ve hata mesajları */}
                     <div className="min-h-[24px] flex items-center justify-center">
-                        {castError && (
-                            <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
-                        )}
-                        {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
-                            <p className="text-sm text-yellow-400 text-center animate-pulse">Searching for "{customLocationInput}"...</p>
-                        )}
-                        {!castError && customLocationInput.trim() && geocodedInputLocationData && (
-                            <p className="text-sm text-green-400 text-center">
-                                Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()} 
-                            </p>
-                        )}
-                    </div>
+  {castError && (
+    <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
+  )}
+
+  {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
+    <p className="text-sm text-yellow-400 text-center animate-pulse">
+      Searching for &quot;{customLocationInput}&quot;...
+    </p>
+  )}
+
+  {!castError && customLocationInput.trim() && geocodedInputLocationData && (
+    <p className="text-sm text-green-400 text-center">
+      Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()}
+    </p>
+  )}
+</div>
 
                     {/* Location Input */}
                     <div className="flex items-center gap-2 shrink-0">
