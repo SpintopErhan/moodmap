@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { sdk } from "@farcaster/miniapp-sdk"; // Doğru ve güncel paket
+import { sdk } from "@farcaster/miniapp-sdk";
 import { FarcasterUser, ANONYMOUS_USER } from "@/types/farcaster";
 
 type FarcasterSDKStatus = "idle" | "loading" | "loaded" | "error";
@@ -13,6 +13,7 @@ interface UseFarcasterMiniAppResult {
   status: FarcasterSDKStatus;
   error: Error | null;
   composeCast: (text: string, embeds?: string[]) => Promise<void>;
+  viewProfile: (fid: number) => Promise<void>; // BU SATIRIN OLDUĞUNDAN EMİN OLUN
   sdkActions: typeof sdk.actions | null;
 }
 
@@ -99,7 +100,32 @@ export const useFarcasterMiniApp = (
     [status, appEmbedUrl]
   );
 
+  // Yeni viewProfile fonksiyonu
+  const viewProfile = useCallback(
+    async (fid: number) => {
+      if (status !== "loaded") {
+        console.warn("[FarcasterSDK] SDK not loaded, cannot view profile.");
+        throw new Error("SDK not loaded");
+      }
+      try {
+        console.log(`[FarcasterSDK] Attempting to view profile for FID: ${fid}...`);
+        await sdk.actions.viewProfile({ fid });
+      } catch (err: unknown) {
+        console.error(`[FarcasterSDK] viewProfile error for FID ${fid}:`, err);
+        throw err; // Hatanın tüketiciye iletilmesi
+      }
+    },
+    [status] // Sadece SDK'nın yüklenme durumuna bağımlı
+  );
+
   const memoizedSdkActions = useMemo(() => (status === "loaded" ? sdk.actions : null), [status]);
 
-  return { user, status, error, composeCast, sdkActions: memoizedSdkActions };
+  return { 
+    user, 
+    status, 
+    error, 
+    composeCast, 
+    viewProfile, // Buraya viewProfile'ı ekledik
+    sdkActions: memoizedSdkActions 
+  };
 };
