@@ -22,10 +22,10 @@ const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
 
-// Debounce yardımcı fonksiyonu - 'any' tipleri düzeltildi
-const debounce = <T extends (...args: any[]) => void>(func: T, delay: number) => {
+// Debounce yardımcı fonksiyonu - TİP HATALARI DÜZELTİLDİ
+const debounce = <T extends (...args: any[]) => void>(func: T, delay: number): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
+  return (...args: Parameters<T>) => { // Bu satırda 'any' hatası vardı, şimdi 'Parameters<T>' ile düzeltildi
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), delay);
   };
@@ -85,8 +85,6 @@ const DEFAULT_ZOOM_LEVEL = 5;
 export default function Home() {
   const { user, status, error, composeCast } = useFarcasterMiniApp(); 
 
-  // --- currentDeterminedLocationData state'i kaldırıldı ---
-  // const [currentDeterminedLocationData, setCurrentDeterminedLocationData] = useState<LocationData | null>(null);
   const [userLastMoodLocation, setUserLastMoodLocation] = useState<LocationData | null>(null);
   const [mapRecenterTrigger, setMapRecenterTrigger] = useState<{ 
     coords: [number, number], 
@@ -297,8 +295,7 @@ export default function Home() {
     // customLocationInput ve geocodedInputLocationData'yı sıfırla
     setCustomLocationInput('');
     setGeocodedInputLocationData(null);
-    console.log("[page.tsx] All panels closed and states reset to map view.");
-  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData /* Removed setShowPresetLocations */]);
+  }, [view, setSelectedClusterMoods, setSelectedEmoji, setStatusText, setIsSubmitting, setCastError, setSendCast, setCustomLocationInput, setGeocodedInputLocationData]);
 
 
    // --- KALDIRILDI: handleInitialLocationDetermined callback'i tamamen kaldırıldı ---
@@ -631,8 +628,6 @@ export default function Home() {
   }, [setIsMapCenteredOnUserLocation]);
 
   const triggerRecenter = useCallback(() => {
-    // TRIGGER RECENTER İÇİN YA geocodedInputLocationData'yı YA DA userLastMoodLocation'ı kullanırız.
-    // currentDeterminedLocationData artık bu işlev için ana kaynak değildir.
     const targetLocationData = geocodedInputLocationData || userLastMoodLocation;
 
     if (targetLocationData) {
@@ -659,7 +654,6 @@ export default function Home() {
   }, [triggerRecenter, handleCloseAllPanels]); 
 
   const isRecenterButtonDisabled = useMemo(() => {
-    // Recenter butonu, eğer ne userLastMoodLocation ne de geocodedInputLocationData mevcut değilse veya zaten ortalanmışsa devre dışı kalır.
     const noLocationData = !userLastMoodLocation && !geocodedInputLocationData;
     const isCurrentlyCentered = isMapCenteredOnUserLocation; 
     return noLocationData || isCurrentlyCentered; 
@@ -706,11 +700,9 @@ export default function Home() {
     const sortedClusterMoods = moodsInCluster.sort((a, b) => b.timestamp - a.timestamp);
     setSelectedClusterMoods(sortedClusterMoods); 
     setView(ViewState.CLUSTER_LIST); 
-    console.log("[page.tsx] Cluster clicked, showing moods:", sortedClusterMoods); 
-  }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]);
+  }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]); // 'console.log' kaldırıldı
 
 
-  // isPostVibeButtonDisabled güncellendi: Artık customLocationInput ve geocodedInputLocationData'yı kontrol ediyor.
   const isPostVibeButtonDisabled = !customLocationInput.trim() || !geocodedInputLocationData || (user?.fid === undefined && anonFid === null); 
 
   const isOverallLoading = status === "loading" || !isDataLoaded || !isMapReady;
@@ -724,7 +716,6 @@ export default function Home() {
       loadingMessage = "Initializing map...";
   }
   
-  // Farcaster SDK başlangıç hatası durumunda yükleme ekranını göstermeden hata ekranı döndür
   if (status === "error") {
     return (
       <main className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -737,7 +728,6 @@ export default function Home() {
   return (
     <div className="relative w-full h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
 
-      {/* Full-screen backdrop for closing only Preset Locations (Diğer paneller onMapClick ile kapanır) */}
       {showPresetLocations && (
         <div
           className="absolute inset-0 z-[50] pointer-events-auto" 
@@ -745,19 +735,13 @@ export default function Home() {
         ></div>
       )}
 
-      {/* Header / Top Bar (En üstte olmalı, Z-index en yüksek) */}
-      {/* Sadece MAP görünümündeyken Header'ı göster. Bu, diğer tüm view'lerde gizlenmesini sağlar. */}
       {view === ViewState.MAP && (
         <div className="absolute top-0 left-0 right-0 z-[60] p-4 pointer-events-none">
-          {/* Top-left container (user info + recent mood) */}
           <div className="flex flex-col items-start gap-2"> 
-              {/* 1. ROW: Kullanıcı adı kutusu ve Konum Navigasyon Butonu */}
               <div className="flex items-center gap-2 pointer-events-auto">
-                  {/* Kullanıcı adı kutusu */}
                   <div className={`p-2 ${BASE_TRANSLUCENT_PANEL_CLASSES}`}>
                       <p className="text-sm font-semibold text-blue-400 leading-tight">{user?.username || "anonymous"}</p>
                   </div>
-                  {/* Konum Navigasyon Butonu */}
                   <button
                       onClick={handleRecenterToUserLocation}
                       disabled={isRecenterButtonDisabled} 
@@ -769,7 +753,6 @@ export default function Home() {
                   </button>
               </div>
 
-              {/* 2. ROW: Kullanıcının son mod'u (emoji ve not) */}
               {lastLocallyPostedMood && (
                   <div className={`flex items-center gap-1 px-2 py-1 ${BASE_TRANSLUCENT_PANEL_CLASSES} pointer-events-auto max-w-[calc(100vw-32px)]`}>
                       <span className="text-xl">{lastLocallyPostedMood.emoji}</span>
@@ -784,13 +767,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content Area - Harita burada her zaman render ediliyor, opacity ile kontrol ediliyor */}
       <div className={`flex-1 relative z-0 transition-opacity duration-500 ${isOverallLoading ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}>
         <div className="absolute inset-0">
             <DynamicMap
                 moods={moods}
-                // --- KALDIRILDI: onInitialLocationDetermined prop'u kaldırıldı ---
-                // onInitialLocationDetermined={handleInitialLocationDetermined}
                 height="100%"
                 recenterTrigger={mapRecenterTrigger}
                 onRecenterComplete={handleMapRecenterComplete}
@@ -798,7 +778,6 @@ export default function Home() {
                 onClusterClick={handleClusterMarkerClick}
                 onMapClick={handleCloseAllPanels} 
                 onMapReady={() => {
-                    // Harita hazır olduğunda sadece bir kez isMapReady'yi true yap
                     if (!isMapReady) {
                         console.log("[page.tsx] DynamicMap reported itself ready! Setting isMapReady(true).");
                         setIsMapReady(true);
@@ -811,7 +790,6 @@ export default function Home() {
             />
         </div>
 
-        {/* List View Overlay */}
         { view === ViewState.LIST && (
             <div
                 className={`absolute inset-0 z-[65] px-2 pb-20 bg-black/40 backdrop-blur-sm pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300`}
@@ -829,7 +807,6 @@ export default function Home() {
             </div>
         )}
 
-         {/* Küme Listesi Yan Paneli */}
         { view === ViewState.CLUSTER_LIST && selectedClusterMoods && (
             <div 
                 className={`absolute top-32 bottom-48 right-0 w-[240px] sm:w-80 md:w-96 z-[65] bg-transparent pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 flex flex-col`}
@@ -853,7 +830,6 @@ export default function Home() {
             </div>
         )}
 
-        {/* Add Mood Overlay (Mood girişi burası) */}
         { view === ViewState.ADD && (
              <div 
                  className={`absolute inset-0 z-[55] bg-slate-900/95 flex items-center justify-center p-6 backdrop-blur-xl pointer-events-auto animate-in zoom-in-95 duration-200`}
@@ -865,26 +841,21 @@ export default function Home() {
                  >
                     <h2 className="text-xl font-bold text-center shrink-0">What&apos;s your Mood?</h2>
 
-                    {/* Konum arama durumu ve hata mesajları */}
                     <div className="min-h-[24px] flex items-center justify-center">
-  {castError && (
-    <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
-  )}
+                        {castError && (
+                            <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
+                        )}
+                        {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
+                            // Tırnak işareti düzeltmesi burada yapıldı
+                            <p className="text-sm text-yellow-400 text-center animate-pulse">Searching for &quot;{customLocationInput}&quot;...</p> 
+                        )}
+                        {!castError && customLocationInput.trim() && geocodedInputLocationData && (
+                            <p className="text-sm text-green-400 text-center">
+                                Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()} 
+                            </p>
+                        )}
+                    </div>
 
-  {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
-    <p className="text-sm text-yellow-400 text-center animate-pulse">
-      Searching for &quot;{customLocationInput}&quot;...
-    </p>
-  )}
-
-  {!castError && customLocationInput.trim() && geocodedInputLocationData && (
-    <p className="text-sm text-green-400 text-center">
-      Location identified: {geocodedInputLocationData.locationLabel ?? customLocationInput.trim()}
-    </p>
-  )}
-</div>
-
-                    {/* Location Input */}
                     <div className="flex items-center gap-2 shrink-0">
                         <label htmlFor="locationInput" className="text-slate-300 text-sm font-semibold whitespace-nowrap">Location:</label>
                         <input
@@ -922,10 +893,9 @@ export default function Home() {
                         onMouseLeave={handleMouseLeave}
                         onMouseUp={handleMouseUp}
                         onMouseMove={handleMouseMove}
-                        // Kaydırma çubuğunun kenarlarına görsel ipucu
                         style={{
                             maskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)',
-                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)' /* Webkit tarayıcılar için */
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent)'
                         }}
                     >
                         <div className="grid grid-rows-3 grid-flow-col gap-3 w-max">
@@ -946,7 +916,6 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* Send cast onay kutusu */}
                     <div className="flex items-center space-x-2 shrink-0"> 
                         <input
                             type="checkbox"
@@ -987,11 +956,9 @@ export default function Home() {
         )}
       </div> 
 
-      {/* --- Bottom Navigation Bar --- */}
       <div className="absolute bottom-0 left-0 right-0 z-[50] p-4 bg-gradient-to-t from-slate-950 via-slate-900/90 to-transparent pb-6">
         <div className={`flex items-center justify-around max-w-md mx-auto ${BOTTOM_NAV_PANEL_CLASSES} pointer-events-auto`}>
 
-            {/* 1. Harita Görünümüne Geçiş Butonu ve Konum Listesi */}
             <div className="relative">
               <button
                   onClick={handleMapButtonClick} 
@@ -1001,11 +968,10 @@ export default function Home() {
                   <MapIcon size={24} />
               </button>
 
-              {/* Preset Locations Menu - Burası harita butonuyla ilişkili, orijinal konumunda kaldı */}
               {showPresetLocations && (
                 <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-40 z-[51] pointer-events-auto ${PRESET_LOCATION_MENU_CLASSES}`}> 
                   <ul className="text-sm text-slate-300">
-                    {PRESET_LOCATIONS.map(preset => (
+                            {PRESET_LOCATIONS.map(preset => (
                       <li
                         key={preset.id}
                         className="px-4 py-2 hover:bg-slate-700/50 cursor-pointer flex items-center gap-2"
@@ -1020,7 +986,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* 3. Add Mood Butonu (+) - Merkezde */}
             <button
                 onClick={() => { 
                     if (view !== ViewState.MAP) { 
@@ -1035,7 +1000,6 @@ export default function Home() {
                 <Plus size={28} strokeWidth={3} />
             </button>
 
-            {/* 5. List Görünümüne Geçiş Butonu */}
             <button
                 onClick={handleListViewToggle} 
                 className={`p-3 rounded-full transition-all ${view === ViewState.LIST ? 'bg-slate-700 text-blue-400' : 'text-slate-400 hover:text-white'}`}
@@ -1047,7 +1011,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Loading Overlay (En üstte olmalı) */}
       {isOverallLoading && (
         <div 
           style={{ backgroundImage: `url('https://moodmap-lake.vercel.app/MoodMap%20Loading%20Screen.png')` }}
