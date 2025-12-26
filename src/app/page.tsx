@@ -68,6 +68,7 @@ const mapSupabaseMoodToAppMood = (dbMood: SupabaseMood): Mood => {
     timestamp: new Date(dbMood.mood_date).getTime(), 
     userId: dbMood.fid.toString(), 
     username: dbMood.username,
+    fid: dbMood.fid, // BURAYI EKLEYİN: Supabase'den gelen fid'i Mood objesine atıyoruz.
   };
 };
 
@@ -393,6 +394,7 @@ export default function Home() {
         location: newLocation,
         locationLabel: newLocationLabel,
         timestamp: moodTimestamp, 
+        fid: actualFid, // BURAYI EKLEYİN: Mevcut mood güncellenirken fid'i atıyoruz.
       };
 
       setMoods(prev => {
@@ -403,15 +405,17 @@ export default function Home() {
 
     } else {
       moodToPost = {
-          id: Math.random().toString(36).substr(2, 9), 
+          id: Math.random().toString(36).substr(2, 9),
           emoji: selectedEmoji,
           text: statusText.trim(),
           location: newLocation,
           locationLabel: newLocationLabel,
-          timestamp: moodTimestamp, 
-          userId: currentUserIdForLocalState, 
-          username: currentUsername
+          timestamp: moodTimestamp,
+          userId: currentUserIdForLocalState,
+          username: currentUsername,
+          fid: actualFid, // BURAYI EKLEYİN: Yeni mood oluşturulurken fid'i atıyoruz.
       };
+
 
       setMoods(prev => [moodToPost, ...(prev || [])]);
     }
