@@ -11,7 +11,7 @@ import { MoodFeed } from '@/components/MoodFeed';
 import { ViewState, Location, LocationData, Mood, MOOD_OPTIONS } from '@/types/app';
 import { Plus, Map as MapIcon, List, MapPin, XCircle, RotateCw } from 'lucide-react'; 
 
-// YENİ: RANDOM_LOCATIONS'ı ve PresetLocation arayüzünü src/lib/randomloc'tan import ediyoruz.
+// RANDOM_LOCATIONS'ı ve PresetLocation arayüzünü src/lib/randomloc'tan import ediyoruz.
 import { RANDOM_LOCATIONS, PresetLocation } from '@/lib/randomloc';
 
 const DynamicMap = dynamic(() => import('@/components/Map/Map'), {
@@ -575,7 +575,7 @@ export default function Home() {
     geocodedInputLocationData, 
   ]); 
 
-  // KALDIRILDI: handleCastLastMoodToFarcaster fonksiyonu artık kullanılmıyor.
+  // KALDIRILDI: handleCastLastMoodToFarcaster fonksiyonu artık kullanılmıyor ve ESLint hatasına neden oluyordu.
   // const handleCastLastMoodToFarcaster = useCallback(async () => {
   //   console.warn("handleCastLastMoodToFarcaster is deprecated and not actively used in current flow.");
   // }, []);
@@ -1033,7 +1033,7 @@ export default function Home() {
               )}
             </div>
 
-           <button
+            <button
                 onClick={() => { 
                     if (view === ViewState.ADD) {
                         return;
@@ -1045,7 +1045,7 @@ export default function Home() {
                 }}
                 className={`bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-full shadow-lg shadow-blue-600/40 active:scale-95 transition-transform -mt-8 border-4 border-slate-900`}
             >
-                <Plus size={28} strokeWidth={3} /> {/* Burası düzeltildi */}
+                <Plus size={28} strokeWidth={3} />
             </button>
 
             <button

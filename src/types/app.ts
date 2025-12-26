@@ -36,17 +36,17 @@ export interface Mood {
   userId: string;
   username: string;
   fid?: number;
+  cast?: boolean;      // Bu özellik Mood arayüzünde OLMALIDIR
+  randomloc?: boolean; // Bu özellik Mood arayüzünde OLMALIDIR
 }
 
 export enum ViewState {
-  MAP = 'map', // Küçük harfe çevrildi
-  LIST = 'list', // Küçük harfe çevrildi
-  ADD = 'add', // Küçük harfe çevrildi
-  CLUSTER_LIST = 'cluster_list', // <<< BU SATIR EKLENDİ
+  MAP = 'map', 
+  LIST = 'list', 
+  ADD = 'add', 
+  CLUSTER_LIST = 'cluster_list', 
 }
 
-// Mood seçeneklerini daha genel bir tip olarak tanımlayalım,
-// MoodFeed içinde kullanılıyor ve label'ı da içeriyor.
 export interface MoodOption {
   emoji: string;
   label: string;
@@ -54,37 +54,35 @@ export interface MoodOption {
 
 export const MOOD_OPTIONS: MoodOption[] = [
   // Status / Vibe
-
   // Feelings
   { emoji: '😂', label: 'Laughing' },
-  { emoji: '😊', label: 'Smiling' }, // <<< YENİ EKLENDİ
-  { emoji: '😏', label: 'Smirking' }, // 
+  { emoji: '😊', label: 'Smiling' }, 
+  { emoji: '😏', label: 'Smirking' }, 
   { emoji: '😴', label: 'Sleepy' },
   { emoji: '🤬', label: 'Angry' },
   { emoji: '🤔', label: 'Thinking' },
-  { emoji: '🎉', label: 'Party' }, // Zaten Vibe'da var, ama buraya da uygun. Çift olabilir, karar sana kalmış.
+  { emoji: '🎉', label: 'Party' }, 
   { emoji: '😭', label: 'Crying' },
   { emoji: '🤒', label: 'Sick' },
   { emoji: '😎', label: 'Cool' },
   { emoji: '🥺', label: 'Pleading' },
-  { emoji: '🤯', label: 'Mindblown' }, // Zaten Vibe'da var, ama buraya da uygun. Çift olabilir.
-  { emoji: '🥰', label: 'In Love' }, // YENİ
-  { emoji: '😇', label: 'Blissful' }, // YENİ
-  { emoji: '😈', label: 'Mischievous' }, // YENİ
-  { emoji: '😶‍🌫️', label: 'Confused' }, // YENİ
-  { emoji: '🤩', label: 'Star-struck' }, // YENİ
-  { emoji: '😤', label: 'Frustrated' }, // YENİ
-  { emoji: '😌', label: 'Relaxed' }, // YENİ
-  { emoji: '🤓', label: 'Focused' }, // YENİ
-  { emoji: '🥳', label: 'Celebrating' }, // YENİ
-  { emoji: '😩', label: 'Stressed' }, // YENİ
-  { emoji: '🫠', label: 'Melting' }, // YENİ
+  { emoji: '🤯', label: 'Mindblown' }, 
+  { emoji: '🥰', label: 'In Love' }, 
+  { emoji: '😇', label: 'Blissful' }, 
+  { emoji: '😈', label: 'Mischievous' }, 
+  { emoji: '😶‍🌫️', label: 'Confused' }, 
+  { emoji: '🤩', label: 'Star-struck' }, 
+  { emoji: '😤', label: 'Frustrated' }, 
+  { emoji: '😌', label: 'Relaxed' }, 
+  { emoji: '🤓', label: 'Focused' }, 
+  { emoji: '🥳', label: 'Celebrating' }, 
+  { emoji: '😩', label: 'Stressed' }, 
+  { emoji: '🫠', label: 'Melting' }, 
   { emoji: '💩', label: 'Crap' },
   { emoji: '🔥', label: 'Lit' },
   { emoji: '✨', label: 'Sparkle' },
   { emoji: '🚀', label: 'Productive' },
   { emoji: '👻', label: 'Ghosting' },
-  
   
   // Drinks & Food
   { emoji: '☕', label: 'Coffee' },
@@ -93,13 +91,13 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { emoji: '🍕', label: 'Pizza' },
   { emoji: '🍔', label: 'Burger' },
   { emoji: '🥗', label: 'Healthy' },
-  { emoji: '🍿', label: 'Movie Night' }, // Label güncellendi
-  { emoji: '🍹', label: 'Cocktail' }, // YENİ
-  { emoji: '🍦', label: 'Ice Cream' }, // YENİ
-  { emoji: '🍣', label: 'Sushi' }, // YENİ
-  { emoji: '🍜', label: 'Noodles' }, // YENİ
-  { emoji: '🍩', label: 'Donut' }, // YENİ
-  { emoji: '🍓', label: 'Fresh Fruit' }, // YENİ
+  { emoji: '🍿', label: 'Movie Night' }, 
+  { emoji: '🍹', label: 'Cocktail' }, 
+  { emoji: '🍦', label: 'Ice Cream' }, 
+  { emoji: '🍣', label: 'Sushi' }, 
+  { emoji: '🍜', label: 'Noodles' }, 
+  { emoji: '🍩', label: 'Donut' }, 
+  { emoji: '🍓', label: 'Fresh Fruit' }, 
   
   // Activities
   { emoji: '💻', label: 'Coding' },
@@ -110,16 +108,15 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { emoji: '📚', label: 'Reading' },
   { emoji: '🛁', label: 'Bath' },
   { emoji: '💤', label: 'Sleeping' },
-  { emoji: '🎶', label: 'Listening to Music' }, // YENİ
-  { emoji: '🎨', label: 'Art/Painting' }, // YENİ
-  { emoji: '✍️', label: 'Writing' }, // YENİ
-  { emoji: '🎬', label: 'Watching TV' }, // YENİ
-  { emoji: '🛍️', label: 'Shopping' }, // YENİ
-  { emoji: '🚶‍♀️', label: 'Walking' }, // YENİ
-  { emoji: '🧑‍💻', label: 'Working' }, // YENİ
-  { emoji: '🧹', label: 'Cleaning' }, // YENİ
+  { emoji: '🎶', label: 'Listening to Music' }, 
+  { emoji: '🎨', label: 'Art/Painting' }, 
+  { emoji: '✍️', label: 'Writing' }, 
+  { emoji: '🎬', label: 'Watching TV' }, 
+  { emoji: '🛍️', label: 'Shopping' }, 
+  { emoji: '🚶‍♀️', label: 'Walking' }, 
+  { emoji: '🧑‍💻', label: 'Working' }, 
+  { emoji: '🧹', label: 'Cleaning' }, 
 
-   
   // Travel & Exploration
   { emoji: '🚗', label: 'Driving' },
   { emoji: '✈️', label: 'Flying' },
@@ -127,11 +124,11 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { emoji: '🏖️', label: 'Beach' },
   { emoji: '💸', label: 'Spending' },
   { emoji: '👀', label: 'Looking' },
-  { emoji: '🗺️', label: 'Exploring' }, // YENİ
-  { emoji: '🚄', label: 'Train Ride' }, // YENİ
-  { emoji: '🚲', label: 'Cycling' }, // YENİ
-  { emoji: '⛵', label: 'Sailing' }, // YENİ
-  { emoji: '🏔️', label: 'Hiking' }, // YENİ
+  { emoji: '🗺️', label: 'Exploring' }, 
+  { emoji: '🚄', label: 'Train Ride' }, 
+  { emoji: '🚲', label: 'Cycling' }, 
+  { emoji: '⛵', label: 'Sailing' }, 
+  { emoji: '🏔️', label: 'Hiking' }, 
 
   // Nature & Weather (YENİ KATEGORİ)
   { emoji: '☀️', label: 'Sunny Day' },
@@ -140,4 +137,3 @@ export const MOOD_OPTIONS: MoodOption[] = [
   { emoji: '🌳', label: 'In Nature' },
   { emoji: '🌊', label: 'By the Ocean' },
 ];
-
