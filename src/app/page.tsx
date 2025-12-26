@@ -22,12 +22,14 @@ const BASE_TRANSLUCENT_PANEL_CLASSES = "bg-slate-900/80 backdrop-blur-md rounded
 const BOTTOM_NAV_PANEL_CLASSES = "bg-slate-800/80 backdrop-blur-lg rounded-full p-2 shadow-2xl border border-slate-700/50";
 const PRESET_LOCATION_MENU_CLASSES = "bg-slate-800/90 backdrop-blur-lg rounded-lg shadow-xl border border-slate-700 py-2";
 
-// Debounce yardımcı fonksiyonu - TİP HATALARI DÜZELTİLDİ
-const debounce = <T extends (...args: any[]) => void>(func: T, delay: number): ((...args: Parameters<T>) => void) => {
+// Debounce yardımcı fonksiyonu - TİP HATASI DÜZELTİLDİ: T extends (...args: any[]) => any olarak güncellendi.
+const debounce = <T extends (...args: any[]) => any>(func: T, delay: number): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => { // Bu satırda 'any' hatası vardı, şimdi 'Parameters<T>' ile düzeltildi
+  return (...args: Parameters<T>) => { 
     clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), delay);
+    timeout = setTimeout(() => {
+      func(...args);
+    }, delay);
   };
 };
 
@@ -666,7 +668,8 @@ export default function Home() {
     }
     setShowPresetLocations(prev => !prev);
     setSelectedClusterMoods(null); 
-  }, [view, setSelectedClusterMoods, handleCloseAllPanels]); 
+  }, [view, setSelectedClusterMoods, handleCloseAllPanels, setShowPresetLocations]); 
+
 
   const handlePresetLocationClick = useCallback((preset: PresetLocation) => {
     const targetCoords = preset.coords; 
@@ -700,7 +703,7 @@ export default function Home() {
     const sortedClusterMoods = moodsInCluster.sort((a, b) => b.timestamp - a.timestamp);
     setSelectedClusterMoods(sortedClusterMoods); 
     setView(ViewState.CLUSTER_LIST); 
-  }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]); // 'console.log' kaldırıldı
+  }, [setSelectedClusterMoods, setView, setShowPresetLocations, view, handleCloseAllPanels]); 
 
 
   const isPostVibeButtonDisabled = !customLocationInput.trim() || !geocodedInputLocationData || (user?.fid === undefined && anonFid === null); 
@@ -846,7 +849,6 @@ export default function Home() {
                             <p className="text-sm text-red-400 text-center mt-2">{castError}</p>
                         )}
                         {!castError && customLocationInput.trim() && !geocodedInputLocationData && (
-                            // Tırnak işareti düzeltmesi burada yapıldı
                             <p className="text-sm text-yellow-400 text-center animate-pulse">Searching for &quot;{customLocationInput}&quot;...</p> 
                         )}
                         {!castError && customLocationInput.trim() && geocodedInputLocationData && (
